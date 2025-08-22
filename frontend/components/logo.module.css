@@ -1,0 +1,20 @@
+.logo {
+  position: absolute;
+  top: 120px;
+  left: 32px;
+}
+
+.logo path {
+  transition: fill 0.3s ease-out;
+  fill: var(--secondary);
+}
+
+.logo:hover path {
+  fill: var(--secondary-background);
+}
+
+@media screen and (max-width: 768px) {
+  .logo {
+    display: none;
+  }
+}

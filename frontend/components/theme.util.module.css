@@ -1,0 +1,17 @@
+.toggle {
+  cursor: pointer;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  width: auto;
+  margin: 0;
+  margin-left: auto;
+  background-color: transparent;
+  border: none;
+}
+
+.toggle svg {
+  display: block;
+  position: relative;
+  fill: var(--primary-bright);
+}

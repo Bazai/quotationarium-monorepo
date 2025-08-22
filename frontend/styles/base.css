@@ -1,0 +1,61 @@
+@layer base {
+  html,
+  body {
+    padding: 0;
+    margin: 0;
+    font-family: "Alegreya", serif;
+    font-optical-sizing: auto;
+    font-weight: 500;
+    font-style: normal;
+    background-color: var(--background);
+    min-height: -webkit-fill-available;
+    color: var(--primary);
+    min-width: 360px;
+    scrollbar-gutter: stable;
+  }
+
+  *:focus {
+    outline: none;
+  }
+
+  * {
+    box-sizing: border-box;
+  }
+
+  #__next {
+    display: flex;
+    height: 100dvh;
+    flex-direction: column;
+    overflow-x: clip;
+  }
+
+  p {
+    line-height: 1.1;
+  }
+
+  /* Modern browsers with `scrollbar-*` support */
+  @supports (scrollbar-width: auto) {
+    * {
+      scrollbar-width: thin;
+      scrollbar-color: var(--primary) var(--background);
+    }
+  }
+
+  /* Legacy browsers with `::-webkit-scrollbar-*` support */
+  @supports selector(::-webkit-scrollbar) {
+    *::-webkit-scrollbar {
+      max-width: 16px;
+    }
+
+    *::-webkit-scrollbar-track {
+      background: var(--primary);
+      border-radius: 5px;
+    }
+
+    *::-webkit-scrollbar-thumb {
+      background-color: var(--secondary);
+      border-radius: 14px;
+      border: 3px solid var(--primary);
+    }
+  }
+}

@@ -1,0 +1,183 @@
+{% extends "admin/base_site.html" %}
+{% load static i18n %}
+
+{% block title %}{{ title }} | {{ site_title|default:_('Django site admin') }}{% endblock %}
+
+{% block breadcrumbs %}
+<div class="breadcrumbs">
+    <a href="{% url 'custom_admin:index' %}">{% trans 'Home' %}</a>
+    &rsaquo; {{ title }}
+</div>
+{% endblock %}
+
+{% block content %}
+<div class="module">
+    <h2>{{ title }}</h2>
+    
+    <div class="statistics-grid">
+        <!-- Левая колонка: Приёмы и Темы -->
+        <div class="left-column">
+            <!-- Статистика по приёмам -->
+            <div class="module">
+                <h3>Приёмы</h3>
+                <div class="results">
+                    <table class="module-table">
+                        <thead>
+                            <tr>
+                                <th>Приём</th>
+                                <th>Количество цитат</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for type in type_stats %}
+                            <tr class="{% cycle 'row1' 'row2' %}">
+                                <td><strong>{{ type.type }}</strong></td>
+                                <td>{{ type.quote_count }}</td>
+                            </tr>
+                            {% endfor %}
+                            
+                            {% if quotes_without_types > 0 %}
+                            <tr class="{% cycle 'row1' 'row2' %}">
+                                <td><strong>Без приёмов</strong></td>
+                                <td>{{ quotes_without_types }}</td>
+                            </tr>
+                            {% endif %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            
+            <!-- Статистика по темам -->
+            <div class="module">
+                <h3>Темы</h3>
+                <div class="results">
+                    <table class="module-table">
+                        <thead>
+                            <tr>
+                                <th>Тема</th>
+                                <th>Количество цитат</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for topic in topic_stats %}
+                            <tr class="{% cycle 'row1' 'row2' %}">
+                                <td><strong>{{ topic.topic }}</strong></td>
+                                <td>{{ topic.quote_count }}</td>
+                            </tr>
+                            {% endfor %}
+                            
+                            {% if quotes_without_topics > 0 %}
+                            <tr class="{% cycle 'row1' 'row2' %}">
+                                <td><strong>Без тем</strong></td>
+                                <td>{{ quotes_without_topics }}</td>
+                            </tr>
+                            {% endif %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Правая колонка: Авторы -->
+        <div class="right-column">
+            <!-- Статистика по авторам -->
+            <div class="module">
+                <h3>Авторы</h3>
+                <div class="results">
+                    <table class="module-table">
+                        <thead>
+                            <tr>
+                                <th>Автор</th>
+                                <th>Количество цитат</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for author in author_stats %}
+                            <tr class="{% cycle 'row1' 'row2' %}">
+                                <td><strong>{{ author.full_name }}</strong></td>
+                                <td>{{ author.quote_count }}</td>
+                            </tr>
+                            {% endfor %}
+                            
+                            {% if quotes_without_authors > 0 %}
+                            <tr class="{% cycle 'row1' 'row2' %}">
+                                <td><strong>Без автора</strong></td>
+                                <td>{{ quotes_without_authors }}</td>
+                            </tr>
+                            {% endif %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+/* Grid layout для статистики */
+.statistics-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 30px;
+    margin-top: 20px;
+}
+
+.left-column,
+.right-column {
+    display: flex;
+    flex-direction: column;
+}
+
+.left-column .module {
+    margin-bottom: 30px;
+}
+
+.left-column .module:last-child {
+    margin-bottom: 0;
+}
+
+/* Таблицы */
+.module-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-bottom: 20px;
+}
+
+.module-table th,
+.module-table td {
+    padding: 8px 12px;
+    text-align: left;
+    border-bottom: 1px solid #ddd;
+}
+
+.module-table th {
+    background-color: #f8f8f8;
+    font-weight: bold;
+}
+
+.module-table .row1 {
+    background-color: #f9f9f9;
+}
+
+.module-table .row2 {
+    background-color: #ffffff;
+}
+
+/* Заголовки */
+.module h3 {
+    margin-top: 0;
+    margin-bottom: 15px;
+    font-size: 18px;
+    font-weight: bold;
+    color: #333;
+}
+
+/* Responsive design */
+@media (max-width: 768px) {
+    .statistics-grid {
+        grid-template-columns: 1fr;
+        gap: 20px;
+    }
+}
+</style>
+{% endblock %}

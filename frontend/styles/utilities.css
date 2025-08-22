@@ -1,0 +1,82 @@
+@layer utilities {
+  /* Typography classes */
+  .inter {
+    font-family: "Inter", sans-serif;
+    font-optical-sizing: auto;
+    font-weight: 400;
+    font-style: normal;
+    font-variation-settings: "slnt" 0;
+  }
+
+  .min {
+    font-size: 3.1vh;
+    line-height: 1.1;
+  }
+
+  .under {
+    font-size: 4vh;
+    line-height: 1.1;
+  }
+
+  .middle {
+    font-size: 4.5vh;
+    line-height: 1.1;
+  }
+
+  .upper {
+    font-size: 6.2vh;
+    line-height: 1.1;
+  }
+
+  .max {
+    font-size: 10vh;
+    line-height: 1.15;
+  }
+
+  @media screen and (min-width: 851px) and (max-width: 1200px) {
+    .max {
+      font-size: 8vh;
+    }
+    .upper {
+      font-size: 6.2vh;
+    }
+    .middle {
+      font-size: 5.5vh;
+    }
+    .under {
+      font-size: 4.5vh;
+    }
+    .min {
+      font-size: 3vh;
+    }
+  }
+
+  @media screen and (min-width: 651px) and (max-width: 850px) {
+    .max {
+      font-size: 6vh;
+    }
+    .upper {
+      font-size: 4.5vh;
+    }
+    .middle {
+      font-size: 3.5vh;
+    }
+    .under {
+      font-size: 3vh;
+    }
+    .min {
+      font-size: 2.2vh;
+    }
+  }
+
+  @media screen and (max-width: 650px) {
+    .min,
+    .under,
+    .middle,
+    .upper,
+    .max {
+      font-size: 24px;
+      line-height: 26px;
+    }
+  }
+}

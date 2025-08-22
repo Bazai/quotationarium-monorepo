@@ -1,0 +1,27 @@
+{% extends "admin/index.html" %} {% load i18n static %} {% block content %} {{
+block.super }} {# Добавляем блок статистики #}
+<div class="module">
+  <table style="width: 100%">
+    <caption>
+      <a href="statistics/" class="section" title="{% trans 'Statistics' %}">
+        <i class="icon icon-plus"></i> {% trans 'Statistics' %}
+      </a>
+    </caption>
+    <tbody>
+      <tr>
+        <th scope="row">
+          <a href="statistics/">{% trans 'View Statistics' %}</a>
+        </th>
+        <td>
+          <a href="statistics/" class="changelink">
+            {% trans 'View detailed statistics by authors, types and topics' %}
+          </a>
+        </td>
+        <td class="action-checkbox-column">
+          <a href="statistics/" class="addlink">{% trans 'View' %}</a>
+        </td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+{% endblock %}

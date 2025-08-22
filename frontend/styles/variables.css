@@ -1,0 +1,44 @@
+:root[data-theme="dark"] {
+  --primary: #f1efec;
+  --secondary: #4b4e5f;
+  --background: #232740;
+  --secondary-background: #f1efec;
+  --primary-dim: #d3c8b8;
+  --dotted: #3a3f61;
+  /* --theme-toggle:  */
+  --close: url(/close_dark.svg);
+  --arrow-left: url(/arrow_left_dark.svg);
+  --arrow-right: url(/arrow_right_dark.svg);
+  --logo-sm: url(/logo_sm.svg);
+  --list: url(/list_dark.svg);
+  --quote: url(/quote_dark.svg);
+
+  --primary-bright: #ffffff;
+  --primary-dark: #202020;
+  --secondary-bright: #ffea5f;
+
+  /* Asks browser to behave in dark mode */
+  color-scheme: dark;
+}
+
+/*
+ * Light mode theme 
+ */
+:root[data-theme="light"] {
+  --primary: #232740;
+  --secondary: #e8e0d5;
+  --background: #f1efec;
+  --secondary-background: #232740;
+  --primary-dim: #3a3f61;
+  --dotted: #d3c8b8;
+  --close: url(/close.svg);
+  --arrow-left: url(/arrow_left.svg);
+  --arrow-right: url(/arrow_right.svg);
+  --logo-sm: url(/logo_dark.svg);
+  --list: url(/list.svg);
+  --quote: url(/quote.svg);
+
+  --primary-dark: #efefef;
+  --secondary-bright: #4800ff;
+  --primary-bright: #000000;
+}

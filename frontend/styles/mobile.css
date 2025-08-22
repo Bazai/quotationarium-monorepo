@@ -1,0 +1,115 @@
+@layer components {
+  @media screen and (max-width: 768px) {
+    .logo-wrapper {
+      @apply h-14;
+    }
+
+    .theme-toggle {
+      @apply flex-grow-0 mr-0;
+    }
+
+    .theme-toggle button {
+      @apply p-0 w-fit ml-0;
+    }
+
+    .logo {
+      @apply hidden;
+    }
+
+    .logo-sm {
+      background: var(--logo-sm);
+      @apply block w-[200px] h-4 m-4 mx-2 ml-0 bg-contain bg-no-repeat;
+    }
+
+    .search {
+      @apply ml-0;
+    }
+
+    .select,
+    .select-wrapper {
+      @apply ml-auto mr-0;
+    }
+
+    .select-wrapper span {
+      @apply overflow-hidden text-ellipsis whitespace-nowrap w-1/2;
+    }
+
+    input:focus,
+    .select-wrapper:focus {
+      @apply w-full;
+    }
+
+    .search:hover ~ .select-wrapper {
+      @apply hidden;
+    }
+
+    .select-wrapper:focus ~ input {
+      @apply hidden;
+    }
+
+    .filter {
+      @apply m-0 mb-4;
+    }
+
+    .filter .col-1 {
+      @apply px-2;
+    }
+
+    .quote-wrapper .col-1 {
+      @apply hidden;
+    }
+
+    .progress-bar__wrapper {
+      @apply border-t-0 h-[60px];
+    }
+
+    .col-sm-12 .quote {
+      @apply flex-col-reverse flex mb-4;
+    }
+
+    .col-sm-12 .quote .title {
+      @apply mt-2;
+    }
+
+    .dotted {
+      border-top: 2px dotted var(--dotted);
+      font-family: "Inter", sans-serif;
+      background-color: var(--background);
+      @apply text-center h-0 mb-4 block relative;
+      font-size: 13px;
+    }
+
+    .dotted span {
+      background-color: var(--background);
+      @apply absolute -top-2 left-[calc(50vw-16px)];
+    }
+
+    .arrow-left,
+    .arrow-right,
+    .list,
+    .quote-button {
+      background-color: var(--secondary);
+      @apply w-14 h-10 rounded-2xl bg-center;
+    }
+
+    .page {
+      @apply h-10 px-4 leading-10 font-medium cursor-default;
+    }
+
+    .pagination {
+      @apply top-auto fixed bg-transparent left-0 bottom-4 w-full pb-0;
+    }
+  }
+}
+
+@layer utilities {
+  @media screen and (max-width: 768px) {
+    .sm\:hidden {
+      display: none;
+    }
+
+    .col-sm-12 {
+      width: 100%;
+    }
+  }
+}
