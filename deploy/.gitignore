@@ -1,0 +1,33 @@
+# =============================================================================
+# DEPLOYMENT MODULE .GITIGNORE
+# =============================================================================
+
+# Security - exclude all secrets except examples
+.env.secrets
+*.key
+*.pem
+*.p12
+*.pfx
+
+# Logs
+*.log
+logs/
+
+# Temporary files
+*.tmp
+.DS_Store
+
+# Backup files (if created locally during testing)
+*.bak
+*.backup
+
+# IDE and editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# =============================================================================
+# NOTE: Keep .env.secrets.example in git as a template
+# =============================================================================
