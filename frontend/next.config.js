@@ -7,8 +7,8 @@ const nextConfig = {
 
   // Public runtime config (deprecated, use env instead)
   publicRuntimeConfig: {
-    apiUrl: process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api',
-    siteUrl: process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000',
+    apiUrl: process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api",
+    siteUrl: process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000",
   },
 
   // Server runtime config
@@ -24,24 +24,42 @@ const nextConfig = {
 
   // Asset optimization
   images: {
-    domains: ['localhost', 'expo.timuroki.ink'],
-    formats: ['image/webp', 'image/avif'],
+    domains: ["localhost", "expo.timuroki.ink"],
+    formats: ["image/webp", "image/avif"],
   },
 
   // Compression
   compress: true,
 
   // Output configuration
-  output: process.env.NODE_ENV === 'production' ? 'standalone' : undefined,
-
-  // Transpile shared packages (if using workspace)
-  transpilePackages: ['@quotes/shared'],
+  output: process.env.NODE_ENV === "production" ? "standalone" : undefined,
 
   // Webpack configuration
-  webpack: (config, { buildId, dev, isServer, defaultLoaders, webpack }) => {
-    // Add shared module resolution
-    config.resolve.alias['@shared'] = require('path').resolve(__dirname, '../shared');
-    
+  webpack(config) {
+    // Grab the existing rule that handles SVG imports
+    const fileLoaderRule = config.module.rules.find((rule) =>
+      rule.test?.test?.(".svg")
+    );
+
+    config.module.rules.push(
+      // Reapply the existing rule, but only for svg imports ending in ?url
+      {
+        ...fileLoaderRule,
+        test: /\.svg$/i,
+        resourceQuery: /url/, // *.svg?url
+      },
+      // Convert all other *.svg imports to React components
+      {
+        test: /\.svg$/i,
+        issuer: fileLoaderRule.issuer,
+        resourceQuery: { not: [...fileLoaderRule.resourceQuery.not, /url/] }, // exclude if *.svg?url
+        use: ["@svgr/webpack"],
+      }
+    );
+
+    // Modify the file loader rule to ignore *.svg, since we have it handled now.
+    fileLoaderRule.exclude = /\.svg$/i;
+
     return config;
   },
 
@@ -54,11 +72,13 @@ const nextConfig = {
 
   // Rewrites (for API proxying in development)
   async rewrites() {
-    if (process.env.NODE_ENV === 'development') {
+    if (process.env.NODE_ENV === "development") {
       return [
         {
-          source: '/api/:path*',
-          destination: `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api'}/:path*`,
+          source: "/api/:path*",
+          destination: `${
+            process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api"
+          }/:path*`,
         },
       ];
     }
@@ -69,19 +89,19 @@ const nextConfig = {
   async headers() {
     return [
       {
-        source: '/(.*)',
+        source: "/(.*)",
         headers: [
           {
-            key: 'X-Frame-Options',
-            value: 'DENY',
+            key: "X-Frame-Options",
+            value: "DENY",
           },
           {
-            key: 'X-Content-Type-Options',
-            value: 'nosniff',
+            key: "X-Content-Type-Options",
+            value: "nosniff",
           },
           {
-            key: 'Referrer-Policy',
-            value: 'strict-origin-when-cross-origin',
+            key: "Referrer-Policy",
+            value: "strict-origin-when-cross-origin",
           },
         ],
       },
@@ -96,7 +116,7 @@ const nextConfig = {
 
   // ESLint configuration
   eslint: {
-    dirs: ['pages', 'components', 'lib'],
+    dirs: ["pages", "components", "lib"],
   },
 
   // TypeScript configuration

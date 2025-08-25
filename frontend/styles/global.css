@@ -4,9 +4,7 @@
 /* All imports must come after empty @layer declaration */
 @import "./variables.css";
 @import "./base.css";
-@import "./components.css";
-@import "./utilities.css";
-@import "./mobile.css";
+@import "./typography.css";
 
 /* Tailwind CSS directives come after imports */
 @tailwind base;

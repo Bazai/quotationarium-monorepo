@@ -1,49 +1,7 @@
 import React, { useState, useRef, useEffect } from "react";
-import css from "./select.module.css";
 import { SelectItem } from "../lib/types";
-
-interface CloseIconProps {
-  className?: string;
-  onClick: (e: React.MouseEvent) => void;
-}
-
-const CloseIcon: React.FC<CloseIconProps> = ({ className, onClick }) => {
-  return (
-    <svg
-      className={className}
-      onClick={onClick}
-      width="24"
-      height="24"
-      viewBox="0 0 24 24"
-      fill="none"
-      xmlns="http://www.w3.org/2000/svg"
-    >
-      <path d="M20 4L12 12L4 4" stroke="#F1EFEC" strokeWidth="3" />
-      <path d="M4 20L12 12L20 20" stroke="#F1EFEC" strokeWidth="3" />
-    </svg>
-  );
-};
-
-interface DownIconProps {
-  className?: string;
-}
-
-const DownIcon: React.FC<DownIconProps> = ({ className }) => {
-  return (
-    <svg
-      className={className}
-      width="24"
-      height="24"
-      viewBox="0 0 26 24"
-      fill="none"
-      xmlns="http://www.w3.org/2000/svg"
-    >
-      <path d="M24 6L13 17L2 6" stroke="#232740" strokeWidth="3" />
-    </svg>
-  );
-};
-
-const placeholder = "Выбрать приём";
+import { Icon } from "./icon";
+import { cn } from "../lib/utils";
 
 interface SelectProps {
   items: SelectItem[];
@@ -104,19 +62,44 @@ const Select: React.FC<SelectProps> = ({
 
   return (
     <div
-      className={isSelected ? css.selected : css.select}
+      className={cn(
+        "h-10 w-full relative flex items-center cursor-pointer rounded-2xl font-inter text-lg px-4 pr-12",
+        isSelected
+          ? "text-background bg-secondary-background hover:bg-secondary-background"
+          : "bg-secondary text-primary hover:bg-dotted"
+      )}
       onClick={handleOpen}
     >
       <span className="truncate">{title}</span>
-      {!isSelected && <DownIcon className={css.icon} />}
-      {isSelected && <CloseIcon className={css.close} onClick={handleReset} />}
+      {!isSelected && (
+        <Icon name="arrowDown" className="absolute top-2 right-4 w-6 h-6" />
+      )}
+      {isSelected && (
+        <Icon
+          name="close"
+          reverse
+          className="absolute top-2 right-4 z-[99] w-6 h-6"
+          onClick={handleReset}
+        />
+      )}
       {open && (
-        <div className={css.dropdown} ref={ref}>
-          <ul>
+        <div
+          className={cn(
+            "bg-secondary-background absolute top-12 left-0 w-full rounded-2xl",
+            "text-secondary text-base font-inter max-h-[515px] overflow-y-scroll z-[98]"
+          )}
+          style={{
+            scrollbarWidth: "auto",
+            scrollbarColor: "var(--background) var(--primary)",
+          }}
+          ref={ref}
+        >
+          <ul className="list-none p-0 m-0">
             {items.map((item) => {
               return (
                 <li
                   key={item.id}
+                  className="py-2 px-4 border-b border-primary-dim cursor-pointer"
                   onClick={() => handleSelect(item.id, item.type)}
                 >
                   {item.type}

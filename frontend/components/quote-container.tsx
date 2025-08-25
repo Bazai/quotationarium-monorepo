@@ -1,6 +1,5 @@
 import React from "react";
 import { cn } from "../lib/utils";
-import css from "./quote-container.module.css";
 import { QuoteContainerProps } from "../lib/types";
 
 const QuoteContainer: React.FC<QuoteContainerProps> = ({ children, style }) => {

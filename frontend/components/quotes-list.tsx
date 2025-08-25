@@ -50,7 +50,9 @@ const QuotesList: React.FC<QuotesListProps> = ({
           <div className="flex" key={quote.id}>
             {showNumbers && (
               <div className="sm:hidden w-[93px] shrink-0">
-                <p className="inter quote-number">{quote.id}.</p>
+                <p data-tid="quote-number" className="font-inter text-lg">
+                  {quote.id}.
+                </p>
               </div>
             )}
             <div className="col sm:w-full">

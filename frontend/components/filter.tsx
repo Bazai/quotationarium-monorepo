@@ -1,36 +1,14 @@
 import React, { useState, useEffect } from "react";
 import axios from "axios";
-import { URL, API_URL } from "../lib/constants";
+import { API_URL } from "../lib/constants";
 import { useRouter } from "next/router";
 import ThemeToggle from "./theme-toggle";
 import { cn } from "../lib/utils";
-import LogoDesktop from "../components/logo";
-import css from "./filter.module.css";
 import Select from "./select";
 import { Type, Topic } from "../lib/types";
 import { getTopics } from "../lib/quotes";
-
-interface CloseIconProps {
-  className?: string;
-  onClick?: (e: React.MouseEvent) => void;
-}
-
-const CloseIcon: React.FC<CloseIconProps> = ({ className, onClick }) => {
-  return (
-    <svg
-      className={className}
-      onClick={onClick}
-      width="24"
-      height="24"
-      viewBox="0 0 24 24"
-      fill="none"
-      xmlns="http://www.w3.org/2000/svg"
-    >
-      <path d="M20 4L12 12L4 4" stroke="#F1EFEC" strokeWidth="3" />
-      <path d="M4 20L12 12L20 20" stroke="#F1EFEC" strokeWidth="3" />
-    </svg>
-  );
-};
+import { Icon } from "./icon";
+import { Logo } from "./logo";
 
 interface FilterProps {
   setSelect: (value: string | number | null) => void;
@@ -105,12 +83,27 @@ const Filter: React.FC<FilterProps> = ({
         "min-w-[360px]"
       )}
     >
-      <LogoDesktop />
+      <a
+        href="https://www.timuroki.ink/"
+        target="_blank"
+        className={cn(
+          "sm:hidden cursor-pointer",
+          "absolute top-[320px] left-9",
+          "text-secondary hover:text-secondary-background",
+          "transition-colors duration-300",
+          "-rotate-90 origin-left"
+        )}
+      >
+        <Logo />
+      </a>
 
-      <div data-tid="header-mobile" className={css.mobile}>
+      <div
+        data-tid="header-mobile"
+        className={cn("hidden", "sm:flex sm:items-center sm:h-14")}
+      >
         <div className="inline-flex h-fit">
           <a href="https://www.timuroki.ink/" target="_blank">
-            <div className="logo-sm" />
+            <Logo />
           </a>
         </div>
 
@@ -126,27 +119,55 @@ const Filter: React.FC<FilterProps> = ({
           "sm:m-0 sm:mb-4 sm:grid-cols-[56px_1fr] sm:gap-2"
         )}
       >
-        <div className={"sm:hidden " + css.viewToggle}>
+        <div className={"sm:hidden w-12 flex-0"}>
           {router.pathname == "/list" ? (
             <a href="/">
-              <div className="quote-button" />
+              <Icon
+                className="rounded-2xl bg-secondary"
+                name="quote"
+                size={40}
+              />
             </a>
           ) : (
             <a href="/list">
-              <div className="list" />
+              <Icon
+                className="rounded-2xl bg-secondary"
+                name="list"
+                size={40}
+              />
             </a>
           )}
         </div>
 
-        <div className={isSearchActive ? css.searchActive : css.search}>
+        <div
+          data-tid="search-input"
+          className={cn(
+            "flex-grow w-full relative",
+            isSearchActive && "col-span-3 sm:col-span-2"
+          )}
+        >
           {!isSearchEmpty && (
-            <CloseIcon className={css.closeIcon} onClick={handleClearSearch} />
+            <Icon
+              name="close"
+              className="absolute top-2 right-4 z-10 w-6 h-6 cursor-pointer"
+              onClick={handleClearSearch}
+              reverse
+            />
           )}
 
           <input
             type="text"
             value={searchTerm}
             placeholder="Найти что-нибудь"
+            className={cn(
+              "h-10 w-full rounded-2xl border-0 pl-12 pr-4",
+              "text-lg text-primary font-inter",
+              "bg-secondary hover:bg-dotted",
+              "focus:bg-secondary-background focus:text-background focus:outline-none",
+              "placeholder-shown:bg-secondary placeholder-shown:text-primary",
+              "sm:pl-10 sm:focus:pl-12",
+              isSearchActive && "pr-12"
+            )}
             onChange={handleChange}
             onFocus={(e) => {
               setIsSearchActive(true);
@@ -156,29 +177,21 @@ const Filter: React.FC<FilterProps> = ({
                 setIsSearchActive(false);
               }
             }}
-          ></input>
-          <svg
-            className={css.searchIcon}
-            width="24"
-            height="24"
-            viewBox="0 0 25 25"
-            fill="none"
-            xmlns="http://www.w3.org/2000/svg"
-          >
-            <circle
-              cx="9"
-              cy="9"
-              r="7.5"
-              transform="matrix(-1 0 0 1 18 0)"
-              stroke="#232740"
-              strokeWidth="3"
-            />
-            <path d="M15 15L23.25 23.25" stroke="#232740" strokeWidth="3" />
-          </svg>
+          />
+
+          <Icon
+            name="search"
+            className="absolute z-10 pointer-events-none top-2 left-4"
+            onClick={handleClearSearch}
+            reverse={isSearchActive}
+          />
         </div>
 
         {/* Type Select */}
-        <div className={isSearchActive ? css.selectInactive : css.select}>
+        <div
+          data-tid="type-select"
+          className={cn("flex-grow w-full", isSearchActive && "hidden")}
+        >
           <Select
             placeholder="Выбрать приём"
             items={types}
@@ -189,8 +202,9 @@ const Filter: React.FC<FilterProps> = ({
 
         {/* Topic Select */}
         <div
+          data-tid="topic-select"
           className={cn(
-            css.select,
+            "flex-grow w-full",
             "sm:col-span-2",
             isSearchActive && "hidden"
           )}
@@ -203,7 +217,12 @@ const Filter: React.FC<FilterProps> = ({
           />
         </div>
 
-        <div className={"sm:hidden ml-auto " + css.themeToggle}>
+        <div
+          className={cn(
+            "sm:hidden ml-auto",
+            "w-[116px] flex-shrink-0 flex justify-end"
+          )}
+        >
           <ThemeToggle />
         </div>
       </div>

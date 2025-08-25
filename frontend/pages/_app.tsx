@@ -11,7 +11,11 @@ export default function App({ Component, pageProps }: AppProps) {
   return (
     <NuqsAdapter>
       <Head>
-        <meta name="viewport" content="viewport-fit=cover" />
+        <title>Словомеханики</title>
+        <meta
+          name="viewport"
+          content="width=device-width, initial-scale=1.0, viewport-fit=cover"
+        />
       </Head>
       <Script id="gtm" strategy="afterInteractive">
         {`

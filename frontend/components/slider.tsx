@@ -1,7 +1,7 @@
 import React, { useRef, useState, useEffect, useCallback } from "react";
-import css from "./slider.module.css";
 import { cn } from "../lib/utils";
 import { SliderProps } from "../lib/types";
+import { Icon } from "./icon";
 
 const Slider: React.FC<SliderProps> = ({
   totalCount,
@@ -166,29 +166,35 @@ const Slider: React.FC<SliderProps> = ({
     <div
       data-tid="pagination-slider"
       className={cn(
-        css.slider,
+        "gap-2 fixed left-0 bottom-0 w-full h-20 p-0",
         "bg-background flex sm:hidden",
         isDisabled && "opacity-50"
       )}
     >
-      <div className={"container flex flex-row px-0 " + css.inner}>
+      <div
+        className={cn(
+          "container flex flex-row px-0",
+          "border-t border-secondary"
+        )}
+      >
         <div className="basis-[80px] flex shrink-0 items-center justify-center">
           <button
             onClick={handleDecrease}
             disabled={isDisabled || currentPosition <= 1}
             className={cn(
-              "arrow-left",
               (isDisabled || currentPosition <= 1) &&
                 "opacity-30 cursor-not-allowed"
             )}
             aria-label="Previous"
-          />
+          >
+            <Icon name="arrowLeft" size={24} />
+          </button>
         </div>
 
         <div className="w-full relative">
           <div
             className={cn(
-              "progress-bar relative",
+              "w-full h-full items-center flex relative",
               !isDisabled && "cursor-pointer"
             )}
             ref={barRef}
@@ -203,30 +209,34 @@ const Slider: React.FC<SliderProps> = ({
           >
             <div
               className={cn(
-                "progress-bar-inner transition-all",
-                isDragging && "transition-none"
+                "h-[3px] w-0 bg-secondary-background my-[39px] relative",
+                isDragging
+                  ? "transition-none"
+                  : "transition-all duration-[10ms] ease-in-out"
               )}
               style={{ width: `${visualProgress}%` }}
-            />
+            >
+              {/* Thumb indicator */}
+              <div
+                className={cn(
+                  "absolute w-6 h-6 bg-background rounded-[9px]",
+                  "border-[3px] border-secondary-background z-[99] cursor-pointer",
+                  isDragging && "scale-125",
+                  "transition-transform"
+                )}
+                style={{
+                  right: "-20px",
+                  top: "-11px",
+                  marginRight: "-7.5px",
+                  transform: `translateX(-50%) ${
+                    isDragging ? "scale(1.25)" : "scale(1)"
+                  }`,
+                }}
+              />
+            </div>
 
             {/* Position indicators for small counts */}
             {renderPositionIndicators()}
-
-            {/* Thumb indicator */}
-            <div
-              className={cn(
-                "absolute top-1/2 -translate-y-1/2 w-4 h-4 bg-primary rounded-full",
-                "shadow-lg border-2 border-white",
-                isDragging && "scale-125",
-                "transition-transform"
-              )}
-              style={{
-                left: `${visualProgress}%`,
-                transform: `translate(-50%, -50%) ${
-                  isDragging ? "scale(1.25)" : "scale(1)"
-                }`,
-              }}
-            />
           </div>
 
           {/* Position label on hover/drag */}
@@ -248,12 +258,13 @@ const Slider: React.FC<SliderProps> = ({
             onClick={handleIncrease}
             disabled={isDisabled || currentPosition >= totalCount}
             className={cn(
-              "arrow-right",
               (isDisabled || currentPosition >= totalCount) &&
                 "opacity-30 cursor-not-allowed"
             )}
             aria-label="Next"
-          />
+          >
+            <Icon name="arrowRight" size={24} />
+          </button>
         </div>
       </div>
     </div>

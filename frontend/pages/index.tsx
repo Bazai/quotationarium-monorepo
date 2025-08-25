@@ -1,16 +1,16 @@
 import React, { useState, useEffect, useRef, useCallback } from "react";
 import { useDebounce } from "@uidotdev/usehooks";
 import { useQueryState } from "nuqs";
-import Head from "next/head";
 import Filter from "../components/filter";
 import Quote from "../components/quote";
 import axios from "axios";
 import { API_URL } from "../lib/constants";
 import Slider from "../components/slider";
-import LogoDesktop from "../components/logo";
 import QuoteContainer from "../components/quote-container";
 import SearchQuotes from "../components/search-quotes";
+import { Icon } from "../components/icon";
 import { Quote as QuoteType, EnrichedQuote } from "../lib/types";
+import { cn } from "@/lib/utils";
 
 export default function Home() {
   const [type, setType] = useQueryState("type", {
@@ -260,9 +260,6 @@ export default function Home() {
 
   return (
     <>
-      <Head>
-        <title>Словомеханики</title>
-      </Head>
       <div data-tid="layout" className="container relative">
         <Filter
           setSelect={handleSelect}
@@ -294,16 +291,33 @@ export default function Home() {
             />
 
             <div
-              data-tid="pagination-mobile"
-              className="container pagination hidden sm:flex"
+              data-tid="pagination-mobile-wrapper"
+              className={cn(
+                "hidden sm:flex gap-2 container w-full",
+                "bg-transparent pb-0",
+                "fixed top-auto left-0 bottom-4"
+              )}
             >
-              <a href="/list">
-                <div className="list" />
+              <a
+                href="/list"
+                className="w-[56px] h-10 cursor-pointer rounded-2xl bg-secondary inline-flex justify-center items-center"
+              >
+                <Icon name="list" size={40} />
               </a>
 
               <div className="ml-auto flex gap-2">
-                <div onClick={decreaseProgress} className="arrow-left" />
-                <div onClick={increaseProgress} className="arrow-right" />
+                <button
+                  className="w-[56px] h-10 cursor-pointer rounded-2xl bg-secondary inline-flex justify-center items-center"
+                  onClick={decreaseProgress}
+                >
+                  <Icon name="arrowLeft" size={24} />
+                </button>
+                <button
+                  className="w-[56px] h-10 cursor-pointer rounded-2xl bg-secondary inline-flex justify-center items-center"
+                  onClick={increaseProgress}
+                >
+                  <Icon name="arrowRight" size={24} />
+                </button>
               </div>
             </div>
           </>

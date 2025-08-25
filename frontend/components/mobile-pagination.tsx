@@ -51,6 +51,42 @@ const DoublePrevSvg = () => {
   );
 };
 
+// Локальный компонент кнопки пагинации
+interface PaginationButtonProps {
+  onClick: () => void;
+  disabled: boolean;
+  children: React.ReactNode;
+  className?: string;
+}
+
+const PaginationButton: React.FC<PaginationButtonProps> = ({
+  onClick,
+  disabled,
+  children,
+  className = "",
+}) => (
+  <button
+    onClick={onClick}
+    disabled={disabled}
+    className={cn(
+      "bg-secondary text-primary rounded-2xl h-10 text-center leading-10 cursor-default whitespace-nowrap font-medium font-inter",
+      "flex items-center justify-center",
+      "w-full h-full",
+      disabled && "opacity-50 cursor-not-allowed",
+      className
+    )}
+  >
+    {children}
+  </button>
+);
+
+// Компонент для отображения текущей страницы
+const PageDisplay: React.FC<{ children: React.ReactNode }> = ({ children }) => (
+  <div className="bg-secondary text-primary rounded-2xl h-10 px-4 text-center leading-10 cursor-default whitespace-nowrap font-medium font-inter w-fit">
+    {children}
+  </div>
+);
+
 export default function MobilePagination({
   currentPage,
   pages,
@@ -65,24 +101,25 @@ export default function MobilePagination({
   const currentPageInfo = pages.find((p) => p.page === currentPage);
 
   return (
-    <div className="ml-auto flex gap-2 items-center">
+    <div
+      className="ml-auto grid gap-2 items-center text-sm"
+      style={{
+        gridTemplateColumns:
+          "minmax(40px, 56px) minmax(40px, 56px) auto minmax(40px, 56px) minmax(40px, 56px)",
+      }}
+    >
       {/* First page button */}
-      <button
+      <PaginationButton
         onClick={() =>
           !disabled && currentPage !== firstPage && onPageChange(firstPage)
         }
         disabled={disabled || currentPage === firstPage}
-        className={cn(
-          "page inter cursor-pointer px-3 inline-flex items-center",
-          (disabled || currentPage === firstPage) &&
-            "opacity-50 cursor-not-allowed"
-        )}
       >
         <DoublePrevSvg />
-      </button>
+      </PaginationButton>
 
       {/* Previous page button */}
-      <button
+      <PaginationButton
         onClick={() => {
           if (!disabled && currentPage !== firstPage) {
             const prevPage = reversed ? currentPage + 1 : currentPage - 1;
@@ -90,24 +127,15 @@ export default function MobilePagination({
           }
         }}
         disabled={disabled || currentPage === firstPage}
-        className={cn(
-          "page inter cursor-pointer px-3 inline-flex items-center",
-          (disabled || currentPage === firstPage) &&
-            "opacity-50 cursor-not-allowed"
-        )}
       >
         <PrevSvg />
-      </button>
+      </PaginationButton>
 
       {/* Current page display */}
-      {currentPageInfo && (
-        <div className="page inter px-4 w-fit cursor-default">
-          {currentPageInfo.label}
-        </div>
-      )}
+      {currentPageInfo && <PageDisplay>{currentPageInfo.label}</PageDisplay>}
 
       {/* Next page button */}
-      <button
+      <PaginationButton
         onClick={() => {
           if (!disabled && currentPage !== lastPage) {
             const nextPage = reversed ? currentPage - 1 : currentPage + 1;
@@ -115,33 +143,23 @@ export default function MobilePagination({
           }
         }}
         disabled={disabled || currentPage === lastPage}
-        className={cn(
-          "page inter cursor-pointer px-3 inline-flex items-center",
-          (disabled || currentPage === lastPage) &&
-            "opacity-50 cursor-not-allowed"
-        )}
       >
         <div className="rotate-180">
           <PrevSvg />
         </div>
-      </button>
+      </PaginationButton>
 
       {/* Last page button */}
-      <button
+      <PaginationButton
         onClick={() =>
           !disabled && currentPage !== lastPage && onPageChange(lastPage)
         }
         disabled={disabled || currentPage === lastPage}
-        className={cn(
-          "page inter cursor-pointer px-3 inline-flex items-center",
-          (disabled || currentPage === lastPage) &&
-            "opacity-50 cursor-not-allowed"
-        )}
       >
         <div className="rotate-180">
           <DoublePrevSvg />
         </div>
-      </button>
+      </PaginationButton>
     </div>
   );
 }

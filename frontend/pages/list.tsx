@@ -1,5 +1,4 @@
 import React, { useState, useEffect, useMemo, useRef } from "react";
-import Head from "next/head";
 import { useDebounce } from "@uidotdev/usehooks";
 import { useQueryState } from "nuqs";
 import Filter from "../components/filter";
@@ -9,6 +8,7 @@ import MobilePagination from "../components/mobile-pagination";
 import { cn } from "../lib/utils";
 import { Quote as QuoteType, PagesInfoResponse } from "../lib/types";
 import { getQuotesPage, getPagesInfo } from "../lib/quotes";
+import { Icon } from "../components/icon";
 
 export default function List() {
   const [page, setPage] = useQueryState("page", {
@@ -34,7 +34,11 @@ export default function List() {
   const [error, setError] = useState<string | null>(null);
 
   // Refs to track previous values for detecting actual changes
-  const prevFiltersRef = useRef<{ type: string | null; topic: string | null; search: string }>({
+  const prevFiltersRef = useRef<{
+    type: string | null;
+    topic: string | null;
+    search: string;
+  }>({
     type: null,
     topic: null,
     search: "",
@@ -63,20 +67,20 @@ export default function List() {
   // Reset page to 1 when type, topic, or search actually changes (not on initialization)
   useEffect(() => {
     const currentFilters = { type, topic, search: debouncedSearchTerm };
-    
+
     // Skip reset on first render (initialization)
     if (!isInitializedRef.current) {
       prevFiltersRef.current = currentFilters;
       isInitializedRef.current = true;
       return;
     }
-    
+
     // Check if any filter actually changed
-    const hasFilterChanged = 
+    const hasFilterChanged =
       prevFiltersRef.current.type !== currentFilters.type ||
       prevFiltersRef.current.topic !== currentFilters.topic ||
       prevFiltersRef.current.search !== currentFilters.search;
-    
+
     if (hasFilterChanged) {
       setPage("1");
       prevFiltersRef.current = currentFilters;
@@ -164,10 +168,6 @@ export default function List() {
 
   return (
     <div data-tid="layout" className="container relative">
-      <Head>
-        <title>Quotes List</title>
-      </Head>
-
       <Filter
         setSelect={handleSelect}
         setSelectTopic={handleSelectTopic}
@@ -184,7 +184,7 @@ export default function List() {
         topPagination={
           pagesInfo && !type && !topic && pagesInfo.total_pages > 1 ? (
             <div
-              data-tid="pagination-desktop"
+              data-tid="pagination-desktop-wrapper"
               className={cn(
                 "sticky top-[120px] left-0 w-full pb-8 bg-background",
                 "flex justify-start sm:hidden"
@@ -202,11 +202,18 @@ export default function List() {
         }
         bottomPagination={
           <div
-            data-tid="pagination-mobile"
-            className="container row sm:flex hidden pagination"
+            data-tid="pagination-mobile-wrapper"
+            className={cn(
+              "hidden sm:flex gap-2 container w-full",
+              "bg-transparent pb-0",
+              "fixed top-auto left-0 bottom-4"
+            )}
           >
-            <a href="/">
-              <div className="quote-button" />
+            <a
+              href="/"
+              className="w-[56px] h-10 cursor-pointer rounded-2xl bg-secondary inline-flex justify-center items-center"
+            >
+              <Icon name="quote" size={40} />
             </a>
 
             {pagesInfo && !type && !topic && pagesInfo.total_pages > 1 && (

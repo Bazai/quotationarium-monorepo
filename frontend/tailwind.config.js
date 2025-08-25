@@ -8,7 +8,13 @@ module.exports = {
   theme: {
     fontSize: {
       DEFAULT: "16px",
+      sm: "14px",
+      base: "16px",
+      lg: "18px",
     },
+    // fontFamily: {
+    //   inter: ["Inter", "sans-serif"],
+    // },
     screens: {
       sm: { max: "768px" },
     },
@@ -36,5 +42,17 @@ module.exports = {
 
     extend: {},
   },
-  plugins: [],
+  plugins: [
+    function ({ addComponents }) {
+      addComponents({
+        ".font-inter": {
+          "font-family": '"Inter", sans-serif',
+          "font-optical-sizing": "auto",
+          "font-weight": "400",
+          "font-style": "normal",
+          "font-variation-settings": '"slnt" 0',
+        },
+      });
+    },
+  ],
 };

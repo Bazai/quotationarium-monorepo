@@ -59,7 +59,7 @@ export default function Pagination({
   reversed = false,
 }: PaginationProps) {
   const totalPages = pages.length;
-  
+
   // When reversed, we need to work with the display order
   const displayPages = reversed ? [...pages].reverse() : pages;
 
@@ -72,7 +72,9 @@ export default function Pagination({
     }
 
     // Find current page index in display order
-    const currentDisplayIndex = displayPages.findIndex((p) => p.page === currentPage);
+    const currentDisplayIndex = displayPages.findIndex(
+      (p) => p.page === currentPage
+    );
 
     // Determine which section we're in (based on display position)
     if (currentDisplayIndex <= 3) {
@@ -90,7 +92,10 @@ export default function Pagination({
       result.push("ellipsis-start");
 
       // Find 4 pages centered around current page in display order
-      const start = Math.max(0, Math.min(currentDisplayIndex - 1, totalPages - 4));
+      const start = Math.max(
+        0,
+        Math.min(currentDisplayIndex - 1, totalPages - 4)
+      );
       const end = Math.min(totalPages, start + 4);
 
       result.push(...displayPages.slice(start, end));
@@ -105,11 +110,15 @@ export default function Pagination({
   const lastPage = displayPages[displayPages.length - 1]?.page || 1;
 
   return (
-    <div className="flex flex-nowrap gap-2 items-center justify-center">
+    <div
+      data-tid="pagination-desktop"
+      className="flex flex-nowrap gap-2 items-center justify-center"
+    >
       {/* First page button */}
       <div
         className={cn(
-          "page inter cursor-pointer px-3 inline-flex items-center",
+          "bg-secondary text-primary rounded-2xl h-6 pl-3 pr-2 text-center leading-6 cursor-pointer whitespace-nowrap text-sm font-inter",
+          "px-3 inline-flex items-center",
           (disabled || currentPage === firstPage) &&
             "opacity-50 cursor-not-allowed"
         )}
@@ -123,7 +132,8 @@ export default function Pagination({
       {/* Previous page button */}
       <div
         className={cn(
-          "page inter cursor-pointer px-3 inline-flex items-center",
+          "bg-secondary text-primary rounded-2xl h-6 pl-3 pr-2 text-center leading-6 cursor-pointer whitespace-nowrap text-sm font-inter",
+          "px-3 inline-flex items-center",
           (disabled || currentPage === firstPage) &&
             "opacity-50 cursor-not-allowed"
         )}
@@ -141,7 +151,12 @@ export default function Pagination({
       {visiblePages.map((item, index) => {
         if (item === "ellipsis-start" || item === "ellipsis-end") {
           return (
-            <div key={`ellipsis-${index}`} className="page bg-transparent">
+            <div
+              key={`ellipsis-${index}`}
+              className={cn(
+                "bg-transparent rounded-2xl h-6 pl-3 pr-2 text-center leading-6 cursor-pointer whitespace-nowrap text-sm font-inter"
+              )}
+            >
               ...
             </div>
           );
@@ -150,10 +165,14 @@ export default function Pagination({
         const pageInfo = item as PageInfo;
         return (
           <div
+            data-tid="page"
             key={pageInfo.page}
             className={cn(
-              "page inter cursor-pointer",
-              pageInfo.page === currentPage && "active",
+              "rounded-2xl px-3 py-0 text-center cursor-pointer whitespace-nowrap text-sm font-inter",
+              "h-6 leading-6 inline-flex items-center",
+              pageInfo.page === currentPage
+                ? "bg-primary text-secondary"
+                : "bg-secondary text-primary",
               disabled && "opacity-50 cursor-not-allowed"
             )}
             onClick={() => !disabled && onPageChange(pageInfo.page)}
@@ -166,7 +185,8 @@ export default function Pagination({
       {/* Next page button */}
       <div
         className={cn(
-          "page inter cursor-pointer px-3 inline-flex items-center",
+          "bg-secondary text-primary rounded-2xl h-6 pl-3 pr-2 text-center leading-6 cursor-pointer whitespace-nowrap text-sm font-inter",
+          "px-3 inline-flex items-center",
           (disabled || currentPage === lastPage) &&
             "opacity-50 cursor-not-allowed"
         )}
@@ -185,7 +205,8 @@ export default function Pagination({
       {/* Last page button */}
       <div
         className={cn(
-          "page inter cursor-pointer px-3 inline-flex items-center",
+          "bg-secondary text-primary rounded-2xl h-6 pl-3 pr-2 text-center leading-6 cursor-pointer whitespace-nowrap text-sm font-inter",
+          "px-3 inline-flex items-center",
           (disabled || currentPage === lastPage) &&
             "opacity-50 cursor-not-allowed"
         )}
