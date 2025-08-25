@@ -4,6 +4,8 @@
 
 # Security - exclude all secrets except examples
 .env.secrets
+.env.local
+.env.production
 *.key
 *.pem
 *.p12
