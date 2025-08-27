@@ -153,14 +153,14 @@ run_tests() {
     
     # Run Django tests
     log_info "Running Django tests..."
-    if ! $python_cmd manage.py test; then
+    if ! $python_cmd manage.py test --settings=config.settings_local; then
         log_error "Backend tests failed"
         return 1
     fi
     
     # Check for pending migrations
     log_info "Checking for pending migrations..."
-    if ! $python_cmd manage.py makemigrations --dry-run --check; then
+    if ! $python_cmd manage.py makemigrations --dry-run --check --settings=config.settings_local; then
         log_error "Missing database migrations"
         return 1
     fi
@@ -307,7 +307,7 @@ run_migrations() {
         return 1
     fi
     
-    if $python_cmd manage.py migrate --noinput; then
+    if $python_cmd manage.py migrate --noinput --settings=config.settings_local; then
         log_success "Database migrations completed"
     else
         log_error "Database migrations failed"
@@ -338,7 +338,7 @@ collect_static_files() {
         return 1
     fi
     
-    if $python_cmd manage.py collectstatic --noinput; then
+    if $python_cmd manage.py collectstatic --noinput --settings=config.settings_local; then
         # Fix permissions for static files
         local sudo_cmd=""
         if [ "$SERVICE_USER" != "$(whoami)" ] && [ "$SERVICE_USER" != "" ]; then
@@ -467,7 +467,7 @@ main() {
     log_info "💡 Useful commands:"
     echo "  Status:     ./scripts/deploy-backend.sh $DEPLOY_ENV --dry-run"
     echo "  Logs:       sudo journalctl -u $BACKEND_SERVICE_NAME -f"
-    echo "  Shell:      cd $BACKEND_PROD_PATH && source .venv/bin/activate && python manage.py shell"
+    echo "  Shell:      cd $BACKEND_PROD_PATH && source .venv/bin/activate && python manage.py shell --settings=config.settings_local"
     echo "  Rollback:   ./scripts/rollback-backend.sh $DEPLOY_ENV"
     echo "  Health:     curl -I $BACKEND_URL$API_HEALTH_ENDPOINT"
 }
@@ -487,7 +487,7 @@ handle_deployment_error() {
     log_info "💡 Troubleshooting:"
     echo "  1. Check service: sudo systemctl status $BACKEND_SERVICE_NAME"
     echo "  2. Check logs: sudo journalctl -u $BACKEND_SERVICE_NAME -n 20"
-    echo "  3. Database check: cd $BACKEND_PROD_PATH && source .venv/bin/activate && python manage.py dbshell"
+    echo "  3. Database check: cd $BACKEND_PROD_PATH && source .venv/bin/activate && python manage.py dbshell --settings=config.settings_local"
     echo "  4. Manual rollback: ./scripts/rollback-backend.sh $DEPLOY_ENV"
     echo "  5. Health check: curl -I $BACKEND_URL$API_HEALTH_ENDPOINT"
     
