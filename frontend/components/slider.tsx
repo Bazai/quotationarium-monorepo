@@ -98,7 +98,9 @@ const Slider: React.FC<SliderProps> = ({
     // Snap visual progress to actual position
     const finalProgress = calculateProgress(currentPosition);
     setVisualProgress(finalProgress);
-  }, [isDragging, currentPosition, calculateProgress]);
+
+    onPositionChange(currentPosition, true);
+  }, [isDragging, calculateProgress, currentPosition, onPositionChange]);
 
   // Handle click on progress bar
   const handleBarClick = useCallback(

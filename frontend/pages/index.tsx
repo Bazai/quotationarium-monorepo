@@ -236,8 +236,8 @@ export default function Home() {
 
   // Handle position change from Slider
   const handlePositionChange = useCallback(
-    (newPosition: number) => {
-      if (newPosition === currentPosition) return;
+    (newPosition: number, force: boolean = false) => {
+      if (newPosition === currentPosition && !force) return;
 
       // Update position and progress immediately for smooth UI
       setCurrentPosition(newPosition);
@@ -252,6 +252,7 @@ export default function Home() {
         return;
       }
 
+      console.log("=== PPPPPPPPPP", newPosition);
       // Use debounced fetch for non-cached quotes
       debouncedFetchQuoteAtPosition(newPosition);
     },
