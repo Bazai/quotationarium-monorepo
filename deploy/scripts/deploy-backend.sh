@@ -142,21 +142,25 @@ run_tests() {
         return 0
     fi
     
-    # Activate virtual environment if it exists
-    if [ -f ".venv/bin/activate" ]; then
-        source .venv/bin/activate
+    # Use Python from production virtual environment
+    local python_cmd="python"
+    if [ -f "$BACKEND_PROD_PATH/.venv/bin/python" ]; then
+        python_cmd="$BACKEND_PROD_PATH/.venv/bin/python"
+        log_info "Using Python from production virtual environment"
+    else
+        log_warning "Production virtual environment not found, using system Python"
     fi
     
     # Run Django tests
     log_info "Running Django tests..."
-    if ! python manage.py test; then
+    if ! $python_cmd manage.py test; then
         log_error "Backend tests failed"
         return 1
     fi
     
     # Check for pending migrations
     log_info "Checking for pending migrations..."
-    if ! python manage.py makemigrations --dry-run --check; then
+    if ! $python_cmd manage.py makemigrations --dry-run --check; then
         log_error "Missing database migrations"
         return 1
     fi
@@ -290,14 +294,20 @@ run_migrations() {
     log_step "🗄️  Running database migrations..."
     
     cd "$BACKEND_PROD_PATH"
-    source .venv/bin/activate
     
     if [ "$DRY_RUN" = "true" ]; then
         log_info "DRY RUN: Would run database migrations"
         return 0
     fi
     
-    if python manage.py migrate --noinput; then
+    # Use Python from virtual environment
+    local python_cmd=".venv/bin/python"
+    if [ ! -f "$python_cmd" ]; then
+        log_error "Virtual environment not found at $BACKEND_PROD_PATH/.venv"
+        return 1
+    fi
+    
+    if $python_cmd manage.py migrate --noinput; then
         log_success "Database migrations completed"
     else
         log_error "Database migrations failed"
@@ -315,14 +325,20 @@ collect_static_files() {
     log_step "📁 Collecting static files..."
     
     cd "$BACKEND_PROD_PATH"
-    source .venv/bin/activate
     
     if [ "$DRY_RUN" = "true" ]; then
         log_info "DRY RUN: Would collect static files"
         return 0
     fi
     
-    if python manage.py collectstatic --noinput; then
+    # Use Python from virtual environment
+    local python_cmd=".venv/bin/python"
+    if [ ! -f "$python_cmd" ]; then
+        log_error "Virtual environment not found at $BACKEND_PROD_PATH/.venv"
+        return 1
+    fi
+    
+    if $python_cmd manage.py collectstatic --noinput; then
         # Fix permissions for static files
         local sudo_cmd=""
         if [ "$SERVICE_USER" != "$(whoami)" ] && [ "$SERVICE_USER" != "" ]; then
