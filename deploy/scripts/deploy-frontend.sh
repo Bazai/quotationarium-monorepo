@@ -541,6 +541,40 @@ build_application() {
     fi
 }
 
+# Create Next.js environment file from deploy configuration
+create_nextjs_env() {
+    log_info "Creating Next.js environment configuration..."
+    
+    cd "$FRONTEND_PROD_PATH"
+    
+    if [ "$DRY_RUN" = "true" ]; then
+        log_info "DRY RUN: Would create .env.production for Next.js"
+        return 0
+    fi
+    
+    # Create .env.production file for Next.js from deploy configuration
+    cat > .env.production << EOF
+# Next.js Production Environment Variables
+# Auto-generated from deployment configuration
+NEXT_PUBLIC_API_URL=$NEXT_PUBLIC_API_URL
+NEXT_PUBLIC_SITE_URL=$NEXT_PUBLIC_SITE_URL
+NEXT_PUBLIC_GOOGLE_TAG_ID=$NEXT_PUBLIC_GOOGLE_TAG_ID
+NODE_ENV=production
+EOF
+    
+    if [ -f ".env.production" ]; then
+        log_success "Next.js environment configuration created"
+        if [ "$VERBOSE" = "true" ]; then
+            log_info "Environment variables:"
+            log_info "  NEXT_PUBLIC_API_URL=$NEXT_PUBLIC_API_URL"
+            log_info "  NEXT_PUBLIC_SITE_URL=$NEXT_PUBLIC_SITE_URL"
+        fi
+    else
+        log_error "Failed to create Next.js environment configuration"
+        return 1
+    fi
+}
+
 # Deploy application
 deploy_application() {
     log_step "🚀 Deploying application..."
@@ -548,6 +582,9 @@ deploy_application() {
     # Sync files from source to production
     log_info "Syncing application files..."
     sync_files "$FRONTEND_SOURCE_PATH" "$FRONTEND_PROD_PATH" "$RSYNC_EXCLUDE_FRONTEND"
+    
+    # Create Next.js environment configuration
+    create_nextjs_env
     
     # Install dependencies
     install_dependencies
