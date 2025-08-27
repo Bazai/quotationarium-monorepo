@@ -151,16 +151,25 @@ run_tests() {
         log_warning "Production virtual environment not found, using system Python"
     fi
     
+    # Determine which settings to use
+    local settings_module="config.settings"
+    if [ -f "config/settings_local.py" ]; then
+        settings_module="config.settings_local"
+        log_info "Using local settings for tests"
+    else
+        log_info "Using default settings for tests (settings_local.py not found in source)"
+    fi
+    
     # Run Django tests
     log_info "Running Django tests..."
-    if ! $python_cmd manage.py test --settings=config.settings_local; then
+    if ! $python_cmd manage.py test --settings=$settings_module; then
         log_error "Backend tests failed"
         return 1
     fi
     
     # Check for pending migrations
     log_info "Checking for pending migrations..."
-    if ! $python_cmd manage.py makemigrations --dry-run --check --settings=config.settings_local; then
+    if ! $python_cmd manage.py makemigrations --dry-run --check --settings=$settings_module; then
         log_error "Missing database migrations"
         return 1
     fi
