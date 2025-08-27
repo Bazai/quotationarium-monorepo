@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback } from "react";
 import { useDebounce } from "@uidotdev/usehooks";
+import { useThrottle } from "../hooks/useThrottle";
 import { useQueryState } from "nuqs";
 import Filter from "../components/filter";
 import Quote from "../components/quote";
@@ -32,11 +33,20 @@ export default function Home() {
 
   const debouncedSearchTerm = useDebounce(search, 300);
 
+  const throttledPosition = useThrottle(currentPosition, 300); // For drag preview (shows every 30ms)
+  const debouncedPosition = useDebounce(currentPosition, 150); // For final position (after drag stops)
+
   // Cache for recently fetched quotes
   const quoteCache = useRef<Map<number, EnrichedQuote>>(new Map());
 
   // AbortController for cancelling in-flight requests
   const abortControllerRef = useRef<AbortController | null>(null);
+
+  // Track if we're currently dragging to prevent unnecessary fetches
+  const isDragging = useRef<boolean>(false);
+
+  // Track last processed positions to prevent duplicate requests
+  const lastThrottlePosition = useRef<number>(0);
 
   const fetchTotalCount = async (signal?: AbortSignal): Promise<number> => {
     if (typeof window === "undefined") return 0;
@@ -54,7 +64,6 @@ export default function Home() {
       return data.total_count;
     } catch (error) {
       if (axios.isCancel(error)) {
-        console.log("Request cancelled");
       } else {
         console.error("Failed to fetch total count:", error);
       }
@@ -95,43 +104,78 @@ export default function Home() {
     [type, topic]
   );
 
-  // Debounced fetch for position changes
-  const debouncedFetchRef = useRef<NodeJS.Timeout>();
-  const lastRequestedPositionRef = useRef<number>(0);
+  // Effect for THROTTLE - handles drag preview quotes (300ms intervals)
+  useEffect(() => {
+    if (throttledPosition === 0 || !isDragging.current) {
+      return;
+    }
 
-  const debouncedFetchQuoteAtPosition = useCallback(
-    (position: number) => {
-      // Clear previous timeout
-      if (debouncedFetchRef.current) {
-        clearTimeout(debouncedFetchRef.current);
-      }
+    // Prevent duplicate requests for the same position
+    if (lastThrottlePosition.current === throttledPosition) {
+      return;
+    }
 
-      // Update last requested position
-      lastRequestedPositionRef.current = position;
+    lastThrottlePosition.current = throttledPosition;
 
-      // Set new timeout for fetch
-      debouncedFetchRef.current = setTimeout(async () => {
-        // Only fetch if this is still the latest requested position
-        if (lastRequestedPositionRef.current === position) {
-          const newQuote = await fetchQuoteAtPosition(position);
-          if (newQuote && lastRequestedPositionRef.current === position) {
-            // Cache the quote
-            if (quoteCache.current.size >= 20) {
-              const firstKey = quoteCache.current.keys().next().value;
-              if (firstKey !== undefined) {
-                quoteCache.current.delete(firstKey);
-              }
+    // Check cache first
+    const cachedQuote = quoteCache.current.get(throttledPosition);
+    if (cachedQuote) {
+      setQuote(cachedQuote);
+      return;
+    }
+
+    // Fetch quote for drag preview
+    fetchQuoteAtPosition(throttledPosition)
+      .then((newQuote) => {
+        if (newQuote) {
+          // Cache the quote
+          if (quoteCache.current.size >= 20) {
+            const firstKey = quoteCache.current.keys().next().value;
+            if (firstKey !== undefined) {
+              quoteCache.current.delete(firstKey);
             }
-            quoteCache.current.set(position, newQuote);
-
-            // Update quote without checking currentPosition
-            setQuote(newQuote);
           }
+          quoteCache.current.set(throttledPosition, newQuote);
+          setQuote(newQuote);
         }
-      }, 30);
-    },
-    [fetchQuoteAtPosition]
-  );
+      })
+      .catch((error) => {
+        console.error("❌ THROTTLE: Failed to fetch drag preview:", error);
+      });
+  }, [throttledPosition, fetchQuoteAtPosition]);
+
+  // Effect for DEBOUNCE - handles final position after drag stops (150ms)
+  useEffect(() => {
+    if (debouncedPosition === 0 || isDragging.current) {
+      return;
+    }
+
+    // Check cache first
+    const cachedQuote = quoteCache.current.get(debouncedPosition);
+    if (cachedQuote) {
+      setQuote(cachedQuote);
+      return;
+    }
+
+    // Fetch quote for final position
+    fetchQuoteAtPosition(debouncedPosition)
+      .then((newQuote) => {
+        if (newQuote) {
+          // Cache the quote
+          if (quoteCache.current.size >= 20) {
+            const firstKey = quoteCache.current.keys().next().value;
+            if (firstKey !== undefined) {
+              quoteCache.current.delete(firstKey);
+            }
+          }
+          quoteCache.current.set(debouncedPosition, newQuote);
+          setQuote(newQuote);
+        }
+      })
+      .catch((error) => {
+        console.error("❌ DEBOUNCE: Failed to fetch final quote:", error);
+      });
+  }, [debouncedPosition, fetchQuoteAtPosition, currentPosition]);
 
   const initializeData = async () => {
     // Cancel any in-flight requests
@@ -191,30 +235,16 @@ export default function Home() {
   };
 
   useEffect(() => {
-    // Clear cache and debounced requests when filters change
+    // Clear cache when filters change
     quoteCache.current.clear();
 
-    if (debouncedFetchRef.current) {
-      clearTimeout(debouncedFetchRef.current);
-      debouncedFetchRef.current = undefined;
-    }
-
-    // Reset last requested position
-    lastRequestedPositionRef.current = 0;
+    // Reset dragging state
+    isDragging.current = false;
 
     if (typeof window !== "undefined") {
       initializeData();
     }
   }, [type, topic]); // eslint-disable-line react-hooks/exhaustive-deps
-
-  // Cleanup debounced timeout on unmount
-  useEffect(() => {
-    return () => {
-      if (debouncedFetchRef.current) {
-        clearTimeout(debouncedFetchRef.current);
-      }
-    };
-  }, []);
 
   const handleSelect = (value: string | number | null) => {
     setType(value?.toString() || null);
@@ -237,7 +267,18 @@ export default function Home() {
   // Handle position change from Slider
   const handlePositionChange = useCallback(
     (newPosition: number, force: boolean = false) => {
-      if (newPosition === currentPosition && !force) return;
+      if (newPosition === currentPosition && !force) {
+        return;
+      }
+
+      // Update dragging state
+      if (force) {
+        isDragging.current = false;
+        // Reset throttle position tracker when dragging ends
+        lastThrottlePosition.current = 0;
+      } else {
+        isDragging.current = true;
+      }
 
       // Update position and progress immediately for smooth UI
       setCurrentPosition(newPosition);
@@ -252,11 +293,25 @@ export default function Home() {
         return;
       }
 
-      console.log("=== PPPPPPPPPP", newPosition);
-      // Use debounced fetch for non-cached quotes
-      debouncedFetchQuoteAtPosition(newPosition);
+      // Handle force fetch on mouseUp
+      if (force) {
+        // Force fetch on mouseUp for immediate response
+        fetchQuoteAtPosition(newPosition).then((newQuote) => {
+          if (newQuote) {
+            // Cache the quote
+            if (quoteCache.current.size >= 20) {
+              const firstKey = quoteCache.current.keys().next().value;
+              if (firstKey !== undefined) {
+                quoteCache.current.delete(firstKey);
+              }
+            }
+            quoteCache.current.set(newPosition, newQuote);
+            setQuote(newQuote);
+          }
+        });
+      }
     },
-    [currentPosition, totalCount, debouncedFetchQuoteAtPosition]
+    [currentPosition, totalCount, fetchQuoteAtPosition]
   );
 
   return (

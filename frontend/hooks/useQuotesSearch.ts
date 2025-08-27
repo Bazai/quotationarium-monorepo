@@ -49,21 +49,16 @@ export const useQuotesSearch = ({
       const searchParams = new URLSearchParams();
       searchParams.set("search", debouncedSearchTerm);
       searchParams.set("ordering", "-id");
-      
+
       if (type) searchParams.set("type", type);
       if (topic) searchParams.set("topic", topic);
-
-      console.log("Fetching quotes with URL:", `${API_URL}quotes?${searchParams.toString()}`);
 
       const response = await axios.get<PaginatedResponse<Quote>>(
         `${API_URL}quotes?${searchParams.toString()}`
       );
 
-      console.log("API Response:", response.data);
-      
       const quotesArray = response.data.results || [];
-      console.log("Extracted quotes:", quotesArray);
-      
+
       const sortedQuotes = quotesArray.sort(sortByIdDesc);
       setQuotes(sortedQuotes);
       setHasSearched(true);
