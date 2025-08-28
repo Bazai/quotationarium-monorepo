@@ -14,6 +14,7 @@ import { Quote as QuoteType, EnrichedQuote } from "../lib/types";
 import { cn } from "@/lib/utils";
 
 export default function Home() {
+  console.log("2808 deploy testing");
   const [type, setType] = useQueryState("type", {
     defaultValue: null,
     parse: (value) => value || null,
