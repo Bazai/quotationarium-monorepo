@@ -1,0 +1,219 @@
+---
+- name: Next.js application deployment started
+  debug:
+    msg: "Starting Next.js application deployment to {{ app_prod_path }}"
+  tags:
+    - application
+    - frontend
+
+- name: Run pre-deployment validation
+  include_role:
+    name: common/validation
+  vars:
+    required_variables:
+      - app_source_path
+      - app_prod_path
+      - app_user
+    validate_source_paths:
+      - "{{ app_source_path }}"
+    validate_required_files:
+      - "{{ app_source_path }}/package.json"
+      - "{{ app_source_path }}/next.config.js"
+    validate_nodejs: true
+    min_nodejs_version: "18.0.0"
+  tags:
+    - application
+    - validation
+
+- name: Create application backup
+  include_role:
+    name: common/backup
+  vars:
+    backup_source: "{{ app_prod_path }}/.next"
+    backup_path: "{{ app_backup_dir }}"
+    backup_name: "nextjs_build"
+    backup_enabled: "{{ app_backup_enabled | default(true) }}"
+  when: 
+    - app_backup_enabled | default(true)
+    - not ansible_check_mode
+  tags:
+    - application
+    - backup
+
+- name: Stop Next.js service
+  include_role:
+    name: common/service
+  vars:
+    service_name: "{{ app_service_name }}"
+    service_manager: "{{ app_service_manager }}"
+    service_action: "stop"
+    service_user: "{{ app_user }}"
+  tags:
+    - application
+    - service
+
+- name: Ensure application directory structure
+  file:
+    path: "{{ item }}"
+    state: directory
+    owner: "{{ app_user }}"
+    group: "{{ app_user }}"
+    mode: '0755'
+  loop:
+    - "{{ app_prod_path }}"
+    - "{{ app_backup_dir }}"
+  become: yes
+  tags:
+    - application
+    - directories
+
+- name: Install Node.js dependencies
+  shell: |
+    source ~/.bashrc 2>/dev/null || true
+    source ~/.profile 2>/dev/null || true
+    export NODE_OPTIONS="--max-old-space-size={{ app_node_memory | default(512) }}"
+    npm ci {% if not app_npm_no_optional | default(false) %}{% else %}--no-optional{% endif %}
+  args:
+    chdir: "{{ app_source_path }}"
+  register: npm_install
+  async: "{{ app_npm_timeout | default(300) }}"
+  poll: 5
+  retries: 2
+  delay: 10
+  until: npm_install is succeeded
+  tags:
+    - application
+    - dependencies
+
+- name: Display npm install result
+  debug:
+    msg: "NPM dependencies {{ 'installed/updated' if npm_install is changed else 'already up to date' }}"
+  tags:
+    - application
+
+- name: Create Next.js environment file
+  template:
+    src: "{{ app_env_template | default('env.production.j2') }}"
+    dest: "{{ app_source_path }}/.env.production"
+    mode: '0644'
+  vars:
+    next_public_api_url: "{{ app_api_url }}"
+    next_public_site_url: "{{ app_site_url }}"
+    next_public_google_tag_id: "{{ app_google_tag_id | default('') }}"
+  register: env_file
+  tags:
+    - application
+    - environment
+
+- name: Build Next.js application
+  shell: |
+    source ~/.bashrc 2>/dev/null || true
+    source ~/.profile 2>/dev/null || true
+    export NODE_OPTIONS="--max-old-space-size={{ app_node_memory | default(512) }}"
+    export NEXT_PUBLIC_API_URL="{{ app_api_url }}"
+    export NEXT_PUBLIC_SITE_URL="{{ app_site_url }}"
+    export NEXT_PUBLIC_GOOGLE_TAG_ID="{{ app_google_tag_id | default('') }}"
+    export NODE_ENV=production
+    npm run build
+  args:
+    chdir: "{{ app_source_path }}"
+  register: build_result
+  async: "{{ app_build_timeout | default(600) }}"
+  poll: 10
+  when: not ansible_check_mode
+  failed_when:
+    - build_result.failed is defined
+    - build_result.failed
+    - build_result.rc != 0
+  tags:
+    - application
+    - build
+
+- name: Display build result
+  debug:
+    var: build_result.stdout_lines
+  when: 
+    - build_result is defined
+    - app_verbose | default(false)
+  tags:
+    - application
+
+- name: Verify build artifacts exist
+  stat:
+    path: "{{ app_source_path }}/.next"
+  register: build_artifacts
+  failed_when: not build_artifacts.stat.exists
+  when: not ansible_check_mode
+  tags:
+    - application
+    - verification
+
+- name: Synchronize build artifacts to production (server-side rsync)
+  ansible.posix.synchronize:
+    src: "{{ app_source_path }}/.next/"
+    dest: "{{ app_prod_path }}/.next/"
+    delete: yes
+    owner: no
+    group: no
+  delegate_to: "{{ inventory_hostname }}"
+  become: yes
+  register: build_sync
+  when: not ansible_check_mode
+  tags:
+    - application
+    - sync
+
+- name: Synchronize essential files (server-side rsync)
+  ansible.posix.synchronize:
+    src: "{{ app_source_path }}/{{ item }}"
+    dest: "{{ app_prod_path }}/{{ item }}"
+    owner: no
+    group: no
+  loop: "{{ app_sync_files | default(['package.json', 'next.config.js', 'public/']) }}"
+  delegate_to: "{{ inventory_hostname }}"
+  become: yes
+  register: files_sync
+  when: not ansible_check_mode
+  tags:
+    - application
+    - sync
+
+- name: Set proper ownership of production files
+  file:
+    path: "{{ app_prod_path }}"
+    owner: "{{ app_user }}"
+    group: "{{ app_user }}"
+    recurse: yes
+  become: yes
+  when: 
+    - not ansible_check_mode
+    - (build_sync is changed) or (files_sync is changed)
+  tags:
+    - application
+    - permissions
+
+- name: Start Next.js service
+  include_role:
+    name: common/service
+  vars:
+    service_name: "{{ app_service_name }}"
+    service_manager: "{{ app_service_manager }}"
+    service_action: "start"
+    service_user: "{{ app_user }}"
+    service_port: "{{ app_service_port | default(3000) }}"
+    service_health_url: "{{ app_health_url | default(omit) }}"
+  tags:
+    - application
+    - service
+
+- name: Next.js application deployment completed
+  debug:
+    msg:
+      - "Next.js application deployment completed successfully!"
+      - "Application path: {{ app_prod_path }}"
+      - "Service: {{ app_service_name }} ({{ app_service_manager }})"
+      - "Dependencies updated: {{ 'Yes' if npm_install is changed else 'No changes' }}"
+      - "Build completed: {{ 'Yes' if build_result is changed else 'Skipped (check mode)' }}"
+      - "Environment updated: {{ 'Yes' if env_file is changed else 'No changes' }}"
+  tags:
+    - application

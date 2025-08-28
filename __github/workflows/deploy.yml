@@ -1,0 +1,89 @@
+name: Deploy to Production
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      deploy_version:
+        description: 'Version to deploy (branch, tag, or commit SHA)'
+        required: false
+        default: 'main'
+      skip_tests:
+        description: 'Skip tests'
+        type: boolean
+        required: false
+        default: false
+
+jobs:
+  deploy:
+    name: Deploy with Ansible
+    runs-on: ubuntu-latest
+    
+    environment: 
+      name: production
+      url: https://expo.timuroki.ink
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # Full history for version info
+
+      - name: Setup Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.10'
+
+      - name: Install Ansible
+        run: |
+          python -m pip install --upgrade pip
+          pip install ansible ansible-lint
+
+      - name: Setup SSH key
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/id_rsa
+          chmod 600 ~/.ssh/id_rsa
+          ssh-keyscan -H ${{ secrets.PRODUCTION_HOST }} >> ~/.ssh/known_hosts
+
+      - name: Verify Ansible configuration
+        run: |
+          cd ansible
+          ansible-lint playbooks/deploy.yml || true
+          ansible-inventory --list
+
+      - name: Run Ansible deployment
+        run: |
+          cd ansible
+          ansible-playbook -i inventory/production.yml playbooks/deploy.yml \
+            --extra-vars "git_repo=${{ github.server_url }}/${{ github.repository }}.git" \
+            --extra-vars "deploy_version=${{ github.event.inputs.deploy_version || github.ref_name }}" \
+            --extra-vars "skip_tests=${{ github.event.inputs.skip_tests || 'false' }}" \
+            --extra-vars "ansible_host=${{ secrets.PRODUCTION_HOST }}" \
+            -v
+        env:
+          ANSIBLE_HOST_KEY_CHECKING: False
+
+      - name: Run health checks
+        run: |
+          cd ansible
+          ansible-playbook -i inventory/production.yml playbooks/deploy.yml \
+            --extra-vars "ansible_host=${{ secrets.PRODUCTION_HOST }}" \
+            --tags health-check \
+            -v
+        if: success()
+
+      - name: Notify on success
+        if: success()
+        run: |
+          echo "✅ Deployment successful!"
+          echo "🚀 Version: ${{ github.event.inputs.deploy_version || github.ref_name }}"
+          echo "🌍 URL: https://expo.timuroki.ink"
+
+      - name: Notify on failure
+        if: failure()
+        run: |
+          echo "❌ Deployment failed!"
+          echo "🔍 Check the logs above for details"
+          echo "🔄 You can rollback using: ansible-playbook playbooks/rollback.yml"

@@ -1,0 +1,163 @@
+---
+- name: Pre-flight validation started
+  debug:
+    msg: "Running pre-flight validation checks..."
+  tags:
+    - validation
+    - preflight
+
+- name: Validate required variables are defined
+  assert:
+    that:
+      - item is defined
+      - item | length > 0
+    fail_msg: "Required variable '{{ item }}' is not defined or empty"
+    success_msg: "Required variable '{{ item }}' is properly defined"
+  loop: "{{ required_variables | default([]) }}"
+  when: required_variables is defined
+  tags:
+    - validation
+    - variables
+
+- name: Validate source directories exist
+  stat:
+    path: "{{ item }}"
+  register: source_paths
+  failed_when: not source_paths.stat.exists
+  loop: "{{ validate_source_paths | default([]) }}"
+  when: validate_source_paths is defined
+  tags:
+    - validation
+    - paths
+
+- name: Validate required files exist
+  stat:
+    path: "{{ item }}"
+  register: required_files
+  failed_when: not required_files.stat.exists
+  loop: "{{ validate_required_files | default([]) }}"
+  when: validate_required_files is defined
+  tags:
+    - validation
+    - files
+
+- name: Check system resources
+  setup:
+    filter: "ansible_memory_mb,ansible_mounts"
+  tags:
+    - validation
+    - resources
+
+- name: Validate available memory
+  assert:
+    that:
+      - ansible_memory_mb.real.total >= (min_memory_mb | default(512))
+    fail_msg: "Insufficient memory: {{ ansible_memory_mb.real.total }}MB < {{ min_memory_mb | default(512) }}MB"
+    success_msg: "Memory check passed: {{ ansible_memory_mb.real.total }}MB available"
+  when: min_memory_mb is defined
+  tags:
+    - validation
+    - resources
+
+- name: Validate available disk space
+  assert:
+    that:
+      - item.size_available >= (min_disk_space_mb | default(1024)) * 1024 * 1024
+    fail_msg: "Insufficient disk space on {{ item.mount }}: {{ (item.size_available / 1024 / 1024 / 1024) | round(2) }}GB available"
+    success_msg: "Disk space check passed on {{ item.mount }}: {{ (item.size_available / 1024 / 1024 / 1024) | round(2) }}GB available"
+  loop: "{{ ansible_mounts }}"
+  when:
+    - min_disk_space_mb is defined
+    - item.mount in (validate_disk_mounts | default(['/']))
+  tags:
+    - validation
+    - resources
+
+- name: Check network connectivity
+  uri:
+    url: "{{ item }}"
+    method: GET
+    timeout: 10
+  register: network_checks
+  failed_when: network_checks.status not in [200, 301, 302]
+  loop: "{{ validate_network_urls | default([]) }}"
+  when: validate_network_urls is defined
+  tags:
+    - validation
+    - network
+
+- name: Validate service users exist
+  user:
+    name: "{{ item }}"
+    state: present
+  check_mode: yes
+  register: service_users
+  failed_when: service_users is changed
+  loop: "{{ validate_service_users | default([]) }}"
+  when: validate_service_users is defined
+  tags:
+    - validation
+    - users
+
+- name: Validate Python version
+  command: python3 --version
+  register: python_version
+  changed_when: false
+  when: validate_python | default(false)
+  tags:
+    - validation
+    - python
+
+- name: Check Python version requirement
+  assert:
+    that:
+      - python_version.stdout | regex_replace('^Python ', '') is version(min_python_version, '>=')
+    fail_msg: "Python version {{ python_version.stdout | regex_replace('^Python ', '') }} is below minimum required {{ min_python_version }}"
+    success_msg: "Python version check passed: {{ python_version.stdout }}"
+  when:
+    - validate_python | default(false)
+    - min_python_version is defined
+    - python_version is defined
+    - python_version.stdout is defined
+    - python_version.stdout | length > 0
+  tags:
+    - validation
+    - python
+
+- name: Validate Node.js version
+  shell: |
+    source ~/.bashrc 2>/dev/null || true
+    source ~/.profile 2>/dev/null || true
+    node --version
+  register: node_version
+  changed_when: false
+  failed_when: false
+  when: validate_nodejs | default(false)
+  tags:
+    - validation
+    - nodejs
+
+- name: Check Node.js version requirement
+  assert:
+    that:
+      - node_version.stdout | replace('v', '') is version(min_nodejs_version, '>=')
+    fail_msg: "Node.js version {{ node_version.stdout }} is below minimum required {{ min_nodejs_version }}"
+    success_msg: "Node.js version check passed: {{ node_version.stdout }}"
+  when:
+    - validate_nodejs | default(false)
+    - min_nodejs_version is defined
+    - node_version is defined
+    - node_version.stdout is defined
+    - node_version.stdout | length > 0
+    - node_version.rc is defined
+    - node_version.rc == 0
+  tags:
+    - validation
+    - nodejs
+
+- name: Pre-flight validation completed
+  debug:
+    msg: "All pre-flight validation checks passed successfully!"
+  tags:
+    - validation
+    - preflight

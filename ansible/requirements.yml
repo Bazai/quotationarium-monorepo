@@ -1,0 +1,7 @@
+---
+# Ansible Galaxy requirements
+collections:
+  - name: community.general
+    version: ">=6.0.0"
+  - name: ansible.posix
+    version: ">=1.4.0"

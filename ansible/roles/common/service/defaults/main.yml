@@ -1,0 +1,13 @@
+---
+# Default variables for service role
+service_enabled: true
+service_start_delay: 2
+service_timeout: 30
+service_host: localhost
+service_user: www-data
+
+# Valid actions: start, stop, restart
+service_action: restart
+
+# Valid managers: systemd, pm2
+service_manager: systemd

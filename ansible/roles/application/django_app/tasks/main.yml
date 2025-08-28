@@ -1,0 +1,183 @@
+---
+- name: Django application deployment started
+  debug:
+    msg: "Starting Django application deployment to {{ app_prod_path }}"
+  tags:
+    - application
+    - backend
+
+- name: Run pre-deployment validation
+  include_role:
+    name: common/validation
+  vars:
+    required_variables:
+      - app_source_path
+      - app_prod_path
+      - app_venv_path
+      - app_user
+    validate_source_paths:
+      - "{{ app_source_path }}"
+    validate_required_files:
+      - "{{ app_source_path }}/manage.py"
+      - "{{ app_source_path }}/requirements.txt"
+      - "{{ app_source_path }}/config/wsgi.py"
+    validate_python: true
+    min_python_version: "3.8.0"
+  tags:
+    - application
+    - validation
+
+- name: Create application backup
+  include_role:
+    name: common/backup
+  vars:
+    backup_source: "{{ app_prod_path }}"
+    backup_path: "{{ app_backup_dir }}"
+    backup_name: "django_app"
+    backup_excludes: "{{ backup_excludes_python }}"
+    backup_enabled: "{{ app_backup_enabled | default(true) }}"
+  when: app_backup_enabled | default(true)
+  tags:
+    - application
+    - backup
+
+- name: Stop Django service
+  include_role:
+    name: common/service
+  vars:
+    service_name: "{{ app_service_name }}"
+    service_manager: "{{ app_service_manager }}"
+    service_action: "stop"
+  tags:
+    - application
+    - service
+
+- name: Ensure application directory structure
+  file:
+    path: "{{ item }}"
+    state: directory
+    owner: "{{ app_user }}"
+    group: "{{ app_user }}"
+    mode: "0755"
+  loop:
+    - "{{ app_prod_path }}"
+    - "{{ app_backup_dir }}"
+    - "{{ app_logs_dir | default('/var/log/' + app_name) }}"
+  become: yes
+  tags:
+    - application
+    - directories
+
+- name: Synchronize application code (server-side rsync)
+  ansible.posix.synchronize:
+    src: "{{ app_source_path }}/"
+    dest: "{{ app_prod_path }}/"
+    delete: "{{ app_sync_delete | default(true) }}"
+    rsync_opts: "{{ app_rsync_excludes | default([]) | map('regex_replace', '^(.*)$', '--exclude=\\1') | list }}"
+    owner: no
+    group: no
+  delegate_to: "{{ inventory_hostname }}"
+  become: yes
+  register: sync_result
+  failed_when:
+    - sync_result.failed is defined
+    - sync_result.failed
+    - "'rsync' not in sync_result.msg"
+  tags:
+    - application
+    - sync
+
+- name: Set proper ownership after sync
+  file:
+    path: "{{ app_prod_path }}"
+    owner: "{{ app_user }}"
+    group: "{{ app_user }}"
+    recurse: yes
+  become: yes
+  when: sync_result is changed
+  tags:
+    - application
+    - permissions
+
+- name: Setup Python virtual environment
+  block:
+    - name: Check if virtual environment exists
+      stat:
+        path: "{{ app_venv_path }}/bin/python"
+      register: venv_exists
+
+    - name: Create virtual environment
+      shell: python3 -m venv {{ app_venv_path }}
+      when: not venv_exists.stat.exists
+      become_user: "{{ app_user }}"
+
+    - name: Set virtual environment ownership
+      file:
+        path: "{{ app_venv_path }}"
+        owner: "{{ app_user }}"
+        group: "{{ app_user }}"
+        recurse: yes
+      become: yes
+  tags:
+    - application
+    - virtualenv
+
+- name: Install Python dependencies
+  pip:
+    requirements: "{{ app_prod_path }}/requirements.txt"
+    virtualenv: "{{ app_venv_path }}"
+    state: present
+  become_user: "{{ app_user }}"
+  register: pip_result
+  retries: 3
+  delay: 5
+  until: pip_result is succeeded
+  tags:
+    - application
+    - dependencies
+
+- name: Display dependency installation result
+  debug:
+    msg: "Dependencies {{ 'updated' if pip_result is changed else 'already up to date' }}"
+  tags:
+    - application
+
+- name: Run database operations
+  include_role:
+    name: database/django_migrate
+  vars:
+    django_app_path: "{{ app_prod_path }}"
+    django_venv_path: "{{ app_venv_path }}"
+    django_user: "{{ app_user }}"
+    django_settings_module: "{{ app_django_settings }}"
+    django_backup_dir: "{{ app_backup_dir }}/database"
+    # PostgreSQL backup disabled - using Django dumpdata instead
+  when: app_run_migrations | default(true)
+  tags:
+    - application
+    - database
+    - backup
+
+- name: Start Django service
+  include_role:
+    name: common/service
+  vars:
+    service_name: "{{ app_service_name }}"
+    service_manager: "{{ app_service_manager }}"
+    service_action: "start"
+    service_port: "{{ app_service_port | default(omit) }}"
+    service_health_url: "{{ app_health_url | default(omit) }}"
+  tags:
+    - application
+    - service
+
+- name: Django application deployment completed
+  debug:
+    msg:
+      - "Django application deployment completed successfully!"
+      - "Application path: {{ app_prod_path }}"
+      - "Service: {{ app_service_name }} ({{ app_service_manager }})"
+      - "Code synchronized: {{ 'Yes' if sync_result is changed else 'No changes' }}"
+      - "Dependencies updated: {{ 'Yes' if pip_result is changed else 'No changes' }}"
+  tags:
+    - application

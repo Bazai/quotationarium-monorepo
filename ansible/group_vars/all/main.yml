@@ -1,0 +1,49 @@
+# Global variables for all hosts
+
+# Project configuration
+project_name: "quotes"
+project_user: "www-data"
+service_user: "{{ project_user }}"
+
+# Repository configuration
+git_repo: "https://github.com/Bazai/quotationarium-monorepo"
+git_branch: "main"
+monorepo_path: "/opt/collector_monorepo"
+git_deploy_key: "~/.ssh/id_rsa_collector_monorepo"  # Deploy key on server for git access
+
+# Base paths
+backup_base_dir: "/opt/collector_backups"
+
+# Application configuration
+# Note: Production-specific paths and URLs are defined in inventory/production.yml
+# These are fallback/default values
+
+# Database configuration
+db_host: "{{ vault_db_host }}"
+db_port: "{{ vault_db_port }}"
+db_name: "{{ vault_db_name }}"
+db_user: "{{ vault_db_user }}"
+db_password: "{{ vault_db_password }}"
+
+# Django configuration
+django_secret_key: "{{ vault_django_secret_key }}"
+django_settings_module: "config.settings_local"
+
+# External services
+google_tag_id: "{{ vault_google_tag_id }}"
+
+# Backup configuration
+backup_retention_days: 7
+cleanup_old_backups: true
+
+# Common excludes for Python applications
+backup_excludes_python:
+  - "**/__pycache__"
+  - "**/*.pyc"
+  - "**/*.pyo"
+  - "**/venv"
+  - "**/.venv"
+  - "**/.git"
+  - "**/logs"
+  - "**/*.log"
+  - "**/node_modules"

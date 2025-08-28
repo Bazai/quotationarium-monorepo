@@ -1,0 +1,28 @@
+---
+# Django application defaults
+app_name: "django_app"
+app_user: "www-data"
+app_backup_enabled: true
+app_sync_delete: true
+app_run_migrations: true
+app_service_manager: "systemd"
+app_django_settings: "config.settings_local"
+
+# Rsync excludes specific to Django apps
+app_rsync_excludes:
+  - "**/__pycache__"
+  - "**/*.pyc"
+  - "**/*.pyo"
+  - "**/venv"
+  - "**/.venv"
+  - "**/.git"
+  - "**/logs"
+  - "**/*.log"
+  - "**/config/settings_local.py"  # Preserve production config
+
+# Paths - must be defined in playbook
+app_source_path: ""
+app_prod_path: ""
+app_venv_path: ""
+app_backup_dir: ""
+app_service_name: ""

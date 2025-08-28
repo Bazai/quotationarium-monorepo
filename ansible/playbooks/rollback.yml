@@ -1,0 +1,68 @@
+---
+- name: Rollback Deployment
+  hosts: quotes-prod
+  become: yes
+  gather_facts: yes
+  
+  vars:
+    rollback_timestamp: "{{ rollback_timestamp | default('latest') }}"
+    rollback_component: "{{ rollback_component | default('all') }}"
+  
+  pre_tasks:
+    - name: Display rollback information
+      debug:
+        msg:
+          - "=== Rollback Operation ==="
+          - "Target: {{ inventory_hostname }}"
+          - "Component: {{ rollback_component }}"
+          - "Timestamp: {{ rollback_timestamp }}"
+    
+    - name: Validate rollback parameters
+      assert:
+        that:
+          - rollback_component in ['all', 'backend', 'frontend']
+        fail_msg: "Invalid rollback_component. Must be 'all', 'backend', or 'frontend'"
+
+  tasks:
+    - name: Find available backups
+      find:
+        paths: "{{ backup_base_dir }}"
+        patterns: "*{{ rollback_timestamp }}*.tar.gz"
+        recurse: yes
+      register: available_backups
+
+    - name: Stop services before rollback
+      include_role:
+        name: common/service
+      vars:
+        service_name: "{{ item.service }}"
+        service_manager: "{{ item.manager }}"
+        service_action: "stop"
+        service_user: "{{ service_user }}"
+      loop:
+        - { service: "{{ backend_service }}", manager: "systemd", component: "backend" }
+        - { service: "{{ frontend_service }}", manager: "pm2", component: "frontend" }
+      when: rollback_component in ['all', item.component]
+
+    - name: Start services after rollback
+      include_role:
+        name: common/service
+      vars:
+        service_name: "{{ item.service }}"
+        service_manager: "{{ item.manager }}"
+        service_action: "start"
+        service_user: "{{ service_user }}"
+        service_port: "{{ item.port | default(omit) }}"
+        service_health_url: "{{ item.health_url | default(omit) }}"
+      loop:
+        - { service: "{{ backend_service }}", manager: "systemd", component: "backend", health_url: "{{ backend_health_url }}" }
+        - { service: "{{ frontend_service }}", manager: "pm2", component: "frontend", port: "{{ frontend_port }}", health_url: "{{ frontend_health_url }}" }
+      when: rollback_component in ['all', item.component]
+
+  post_tasks:
+    - name: Display rollback summary
+      debug:
+        msg:
+          - "=== Rollback Completed ==="
+          - "Component: {{ rollback_component }}"
+          - "Timestamp: {{ rollback_timestamp }}"

@@ -1,0 +1,84 @@
+---
+- name: Create backup directory
+  file:
+    path: "{{ backup_path }}"
+    state: directory
+    owner: "{{ backup_owner | default('root') }}"
+    group: "{{ backup_group | default('root') }}"
+    mode: '0755'
+  tags:
+    - backup
+
+- name: Check if source path exists
+  stat:
+    path: "{{ backup_source }}"
+  register: backup_source_stat
+  tags:
+    - backup
+
+- name: Create timestamped backup
+  archive:
+    path: "{{ backup_source }}"
+    dest: "{{ backup_path }}/{{ backup_name }}_{{ ansible_date_time.epoch }}.tar.gz"
+    format: gz
+    exclude_path: "{{ backup_excludes | default([]) }}"
+  when: 
+    - backup_source_stat.stat.exists
+    - backup_enabled | default(true)
+  register: backup_result
+  tags:
+    - backup
+
+- name: Check if backup file exists
+  stat:
+    path: "{{ backup_result.dest }}"
+  register: backup_file_stat
+  when: backup_result is changed
+  tags:
+    - backup
+
+- name: Set backup file permissions
+  file:
+    path: "{{ backup_result.dest }}"
+    owner: "{{ backup_owner | default('root') }}"
+    group: "{{ backup_group | default('root') }}"
+    mode: '0640'
+  when: 
+    - backup_result is changed
+    - backup_result.dest is defined
+    - backup_file_stat.stat.exists | default(false)
+  tags:
+    - backup
+
+- name: Find old backups
+  find:
+    paths: "{{ backup_path }}"
+    patterns: "{{ backup_name }}_*.tar.gz"
+    age: "{{ backup_retention_days | default(7) }}d"
+  register: old_backups
+  when: cleanup_old_backups | default(true)
+  tags:
+    - backup
+    - cleanup
+
+- name: Remove old backups
+  file:
+    path: "{{ item.path }}"
+    state: absent
+  loop: "{{ old_backups.files }}"
+  when: 
+    - cleanup_old_backups | default(true)
+    - old_backups.files is defined
+  tags:
+    - backup
+    - cleanup
+
+- name: Display backup information
+  debug:
+    msg:
+      - "Backup created: {{ backup_result.dest | default('skipped') }}"
+      - "Backup size: {{ backup_result.dest | default('N/A') }}"
+      - "Old backups removed: {{ old_backups.files | default([]) | length }}"
+  when: backup_verbose | default(false)
+  tags:
+    - backup

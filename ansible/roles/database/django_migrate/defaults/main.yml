@@ -1,0 +1,13 @@
+---
+# Django migration role defaults
+django_settings_module: "config.settings_local"
+django_user: "www-data"
+django_backup_enabled: true
+django_collect_static: true
+django_static_clear: false
+django_verbose: false
+
+# Paths - to be overridden in playbook
+django_app_path: ""
+django_venv_path: ""
+django_backup_dir: "/opt/backups/database"

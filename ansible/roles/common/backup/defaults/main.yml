@@ -1,0 +1,29 @@
+---
+# Default variables for backup role
+backup_enabled: true
+backup_retention_days: 7
+cleanup_old_backups: true
+backup_verbose: false
+backup_owner: root
+backup_group: root
+
+# Default excludes for different backup types
+backup_excludes_python:
+  - "**/__pycache__"
+  - "**/*.pyc"
+  - "**/*.pyo"
+  - "**/venv"
+  - "**/.venv"
+  - "**/node_modules"
+
+backup_excludes_nodejs:
+  - "**/node_modules"
+  - "**/.next"
+  - "**/dist"
+  - "**/build"
+
+backup_excludes_git:
+  - "**/.git"
+  - "**/.gitignore"
+  - "**/logs"
+  - "**/*.log"

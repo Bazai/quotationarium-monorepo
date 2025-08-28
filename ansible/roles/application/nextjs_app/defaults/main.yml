@@ -1,0 +1,31 @@
+---
+# Next.js application defaults
+app_name: "nextjs_app"
+app_user: "www-data"
+app_backup_enabled: true
+app_service_manager: "pm2"
+app_service_port: 3000
+app_node_memory: 512
+app_npm_timeout: 300
+app_build_timeout: 600
+app_npm_no_optional: false
+app_verbose: false
+
+# Next.js specific configuration
+app_env_template: "env.production.j2"
+app_api_url: ""
+app_site_url: ""
+app_google_tag_id: ""
+
+# Files to synchronize to production
+app_sync_files:
+  - "package.json"
+  - "next.config.js" 
+  - "public/"
+
+# Paths - must be defined in playbook
+app_source_path: ""
+app_prod_path: ""
+app_backup_dir: ""
+app_service_name: ""
+app_health_url: ""

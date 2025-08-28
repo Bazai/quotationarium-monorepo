@@ -1,0 +1,114 @@
+---
+- name: Deploy Backend Only
+  hosts: quotes-prod
+  become: yes
+  gather_facts: yes
+  
+  vars:
+    timestamp: "{{ ansible_date_time.epoch }}"
+  
+  pre_tasks:
+    - name: Display backend deployment information
+      debug:
+        msg:
+          - "=== Backend Deployment ==="
+          - "Target: {{ inventory_hostname }}"
+          - "Version: {{ deploy_version | default('main') }}"
+          - "Timestamp: {{ ansible_date_time.iso8601 }}"
+          - "Backend: {{ backend_prod_path }}"
+  
+  tasks:
+    - name: Ensure deployment directories exist
+      file:
+        path: "{{ item }}"
+        state: directory
+        owner: root
+        group: root
+        mode: '0755'
+      loop:
+        - "{{ monorepo_path }}"
+        - "{{ backup_base_dir }}/backend"
+      tags: [always]
+
+    - name: Ensure SSH agent is running on server for git operations
+      shell: |
+        if ! pgrep -x "ssh-agent" > /dev/null; then
+          eval "$(ssh-agent -s)"
+          ssh-add {{ git_deploy_key }}
+        fi
+      become_user: root
+      changed_when: false
+      
+    - name: Fix git dubious ownership before git operations
+      shell: |
+        # Fix ownership and configure safe directory BEFORE any git operations
+        if [ -d {{ monorepo_path }} ]; then
+          chown -R root:root {{ monorepo_path }}
+        fi
+        git config --global --add safe.directory {{ monorepo_path }} || true
+      become_user: root
+      changed_when: false
+
+    - name: Clone or update repository
+      git:
+        repo: "{{ git_repo }}"
+        dest: "{{ monorepo_path }}"
+        version: "{{ git_branch }}"
+        force: yes
+        key_file: "{{ git_deploy_key }}"
+      become_user: root
+      register: git_result
+      
+    - name: Set proper ownership of cloned repository
+      file:
+        path: "{{ monorepo_path }}"
+        owner: "{{ service_user }}"
+        group: "{{ service_user }}"
+        recurse: yes
+      become: yes
+      when: git_result is defined and git_result is changed
+      tags: [always]
+
+    - name: Display git update result
+      debug:
+        msg: "Repository updated. Latest commit: {{ git_result.after[:8] }}"
+      when: git_result is defined
+      tags: [always]
+
+    # Deploy backend only
+    - name: Deploy Django backend
+      include_role:
+        name: application/django_app
+      vars:
+        app_source_path: "{{ monorepo_path }}/backend"
+        app_prod_path: "{{ backend_prod_path }}"
+        app_venv_path: "{{ backend_venv_path }}"
+        app_user: "www-data"
+        app_service_name: "{{ backend_service }}"
+        app_backup_dir: "{{ backup_base_dir }}/backend"
+        app_service_manager: "systemd"
+        app_django_settings: "config.settings_local"
+        app_health_url: "{{ backend_health_url }}"
+        # app_service_port: "{{ backend_port }}"  # Omitted - gunicorn uses Unix socket
+      tags: [backend, always]
+
+    # Backend health check - removed port check since gunicorn uses Unix socket
+
+    - name: Verify backend health
+      uri:
+        url: "{{ backend_health_url }}"
+        method: GET
+        status_code: [200, 301, 302]
+      retries: 3
+      delay: 5
+      when: backend_health_url is defined
+      tags: [health-check, backend]
+
+  post_tasks:
+    - name: Display backend deployment summary
+      debug:
+        msg:
+          - "=== Backend Deployment Completed ==="
+          - "Version deployed: {{ deploy_version | default('main') }}"
+          - "Backend service: {{ backend_service }}"
+      tags: [always]

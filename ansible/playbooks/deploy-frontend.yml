@@ -1,0 +1,120 @@
+---
+- name: Deploy Frontend Only
+  hosts: quotes-prod
+  become: yes
+  gather_facts: yes
+  
+  vars:
+    timestamp: "{{ ansible_date_time.epoch }}"
+  
+  pre_tasks:
+    - name: Display frontend deployment information
+      debug:
+        msg:
+          - "=== Frontend Deployment ==="
+          - "Target: {{ inventory_hostname }}"
+          - "Version: {{ deploy_version | default('main') }}"
+          - "Timestamp: {{ ansible_date_time.iso8601 }}"
+          - "Frontend: {{ frontend_prod_path }}"
+  
+  tasks:
+    - name: Ensure deployment directories exist
+      file:
+        path: "{{ item }}"
+        state: directory
+        owner: root
+        group: root
+        mode: '0755'
+      loop:
+        - "{{ monorepo_path }}"
+        - "{{ backup_base_dir }}/frontend"
+      tags: [always]
+
+    - name: Fix git dubious ownership before git operations
+      shell: |
+        # Fix ownership and configure safe directory BEFORE any git operations
+        if [ -d {{ monorepo_path }} ]; then
+          chown -R root:root {{ monorepo_path }}
+        fi
+        git config --global --add safe.directory {{ monorepo_path }} || true
+      become_user: root
+      changed_when: false
+
+    - name: Ensure SSH agent is running on server for git operations
+      shell: |
+        if ! pgrep -x "ssh-agent" > /dev/null; then
+          eval "$(ssh-agent -s)"
+          ssh-add {{ git_deploy_key }}
+        fi
+      become_user: root
+      changed_when: false
+      
+    - name: Clone or update repository
+      git:
+        repo: "{{ git_repo }}"
+        dest: "{{ monorepo_path }}"
+        version: "{{ git_branch }}"
+        force: yes
+        key_file: "{{ git_deploy_key }}"
+      become_user: root
+      register: git_result
+      tags: [always]
+      
+    - name: Set proper ownership of cloned repository
+      file:
+        path: "{{ monorepo_path }}"
+        owner: "{{ service_user }}"
+        group: "{{ service_user }}"
+        recurse: yes
+      become: yes
+      when: git_result is changed
+      tags: [always]
+
+    - name: Display git update result
+      debug:
+        msg: "Repository updated. Latest commit: {{ git_result.after[:8] }}"
+      tags: [always]
+
+    # Deploy frontend only  
+    - name: Deploy Next.js frontend
+      include_role:
+        name: application/nextjs_app
+      vars:
+        app_source_path: "{{ monorepo_path }}/frontend"
+        app_prod_path: "{{ frontend_prod_path }}"
+        app_user: "www-data"
+        app_service_name: "{{ frontend_service }}"
+        app_backup_dir: "{{ backup_base_dir }}/frontend"
+        app_service_manager: "pm2"
+        app_service_port: "{{ frontend_port }}"
+        app_api_url: "{{ backend_api_url }}"
+        app_site_url: "{{ frontend_site_url }}"
+        app_google_tag_id: "{{ google_tag_id | default('') }}"
+      tags: [frontend, always]
+
+    # Frontend health check
+    - name: Wait for frontend service
+      wait_for:
+        port: "{{ frontend_port }}"
+        host: localhost
+        timeout: 60
+      tags: [health-check, frontend]
+
+    - name: Verify frontend health
+      uri:
+        url: "{{ frontend_health_url }}"
+        method: GET
+        status_code: [200, 301, 302]
+      retries: 3
+      delay: 5
+      when: frontend_health_url is defined
+      tags: [health-check, frontend]
+
+  post_tasks:
+    - name: Display frontend deployment summary
+      debug:
+        msg:
+          - "=== Frontend Deployment Completed ==="
+          - "Version deployed: {{ deploy_version | default('main') }}"
+          - "Frontend service: {{ frontend_service }}"
+      tags: [always]

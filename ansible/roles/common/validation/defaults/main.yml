@@ -1,0 +1,14 @@
+---
+# Default validation settings
+# validate_python and validate_nodejs are controlled by calling roles
+# Default behavior: false (handled by default(false) in tasks)
+min_python_version: "3.8.0"
+min_nodejs_version: "18.0.0"
+min_memory_mb: 512
+min_disk_space_mb: 1024
+validate_disk_mounts: ["/"]
+
+# Common required variables for all deployments
+common_required_variables:
+  - ansible_host
+  - monorepo_path

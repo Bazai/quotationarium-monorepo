@@ -1,0 +1,250 @@
+---
+- name: Django migration started
+  debug:
+    msg: "Starting Django database migration process..."
+  tags:
+    - database
+    - migrations
+
+- name: Validate Django application path
+  stat:
+    path: "{{ django_app_path }}/manage.py"
+  register: django_manage_py
+  failed_when: not django_manage_py.stat.exists
+  tags:
+    - database
+    - validation
+
+- name: Validate virtual environment
+  stat:
+    path: "{{ django_venv_path }}/bin/python"
+  register: django_venv_python
+  failed_when: not django_venv_python.stat.exists
+  tags:
+    - database
+    - validation
+
+- name: Check Django configuration
+  django_manage:
+    command: check
+    app_path: "{{ django_app_path }}"
+    virtualenv: "{{ django_venv_path }}"
+  become_user: "{{ django_user }}"
+  register: django_check
+  tags:
+    - database
+    - validation
+
+- name: Display Django check results
+  debug:
+    var: django_check.out
+  when: django_verbose | default(false)
+  tags:
+    - database
+
+- name: Test database connectivity
+  django_manage:
+    command: check
+    app_path: "{{ django_app_path }}"
+    virtualenv: "{{ django_venv_path }}"
+  become_user: "{{ django_user }}"
+  register: db_test
+  tags:
+    - database
+    - validation
+
+- name: Show current migration status
+  django_manage:
+    command: showmigrations
+    app_path: "{{ django_app_path }}"
+    virtualenv: "{{ django_venv_path }}"
+  become_user: "{{ django_user }}"
+  register: current_migrations
+  tags:
+    - database
+    - migrations
+
+- name: Display current migration status
+  debug:
+    var: current_migrations.out
+  when: django_verbose | default(false)
+  tags:
+    - database
+    - migrations
+
+- name: Check for pending migrations
+  shell: |
+    {{ django_venv_path }}/bin/python {{ django_app_path }}/manage.py makemigrations --dry-run --check
+  become_user: "{{ django_user }}"
+  register: pending_migrations
+  failed_when: false
+  changed_when: false
+  tags:
+    - database
+    - migrations
+
+- name: Warn about unmade migrations
+  debug:
+    msg: "Warning: There are unmade migrations that should be committed to source control"
+  when:
+    - pending_migrations.stdout is defined
+    - pending_migrations.rc != 0
+    - "'No changes detected' not in pending_migrations.stdout"
+  tags:
+    - database
+    - migrations
+
+- name: Ensure backup directory exists with proper permissions
+  file:
+    path: "{{ django_backup_dir }}"
+    state: directory
+    owner: "{{ django_user }}"
+    group: "{{ django_user }}"
+    mode: "0755"
+  become: yes
+  when:
+    - django_backup_enabled | default(true)
+    - not ansible_check_mode
+  tags:
+    - database
+    - backup
+
+- name: Create database dump before migrations (Django dumpdata)
+  shell: |
+    cd {{ django_app_path }}
+    {{ django_venv_path }}/bin/python manage.py dumpdata --format=json
+  become_user: "{{ django_user }}"
+  register: django_dump_result
+  when:
+    - django_backup_enabled | default(true)
+    - not ansible_check_mode
+  failed_when: false # Don't fail if dumpdata has issues
+  tags:
+    - database
+    - backup
+
+- name: Save Django dumpdata output to backup file
+  copy:
+    content: "{{ django_dump_result.stdout | default('[]') }}"
+    dest: "{{ django_backup_dir }}/django_data_{{ ansible_date_time.epoch }}.json"
+    owner: "{{ django_user }}"
+    group: "{{ django_user }}"
+    mode: "0644"
+  become: yes
+  when:
+    - django_backup_enabled | default(true)
+    - not ansible_check_mode
+    - django_dump_result is defined
+  tags:
+    - database
+    - backup
+
+- name: Create PostgreSQL database backup
+  postgresql_db:
+    name: "{{ db_name }}"
+    target: "{{ django_backup_dir }}/postgres_{{ db_name }}_{{ ansible_date_time.epoch }}.sql"
+    state: dump
+    login_host: "{{ db_host }}"
+    login_port: "{{ db_port }}"
+    login_user: "{{ db_user }}"
+    login_password: "{{ db_password }}"
+  when:
+    - django_backup_enabled | default(true)
+    - not ansible_check_mode
+    - db_name is defined
+    - db_host is defined
+    - db_user is defined
+    - db_password is defined
+  register: postgres_backup_result
+  failed_when: false # Don't fail if pg_dump not available
+  tags:
+    - database
+    - backup
+
+- name: Run database migrations
+  django_manage:
+    command: migrate
+    app_path: "{{ django_app_path }}"
+    virtualenv: "{{ django_venv_path }}"
+  become_user: "{{ django_user }}"
+  register: migration_result
+  when: not ansible_check_mode
+  failed_when:
+    - migration_result.failed is defined
+    - migration_result.failed
+    - "'No migrations to apply' not in migration_result.out"
+  tags:
+    - database
+    - migrations
+
+- name: Display migration results
+  debug:
+    var: migration_result.out
+  when:
+    - migration_result is defined
+    - django_verbose | default(false)
+  tags:
+    - database
+    - migrations
+
+- name: Verify all migrations were applied
+  django_manage:
+    command: showmigrations
+    app_path: "{{ django_app_path }}"
+    virtualenv: "{{ django_venv_path }}"
+  become_user: "{{ django_user }}"
+  register: final_migrations
+  tags:
+    - database
+    - verification
+
+- name: Check for unapplied migrations
+  fail:
+    msg: "There are still unapplied migrations! Check the output above."
+  when:
+    - final_migrations.out is defined
+    - "'[ ]' in final_migrations.out"
+  tags:
+    - database
+    - verification
+
+- name: Collect static files
+  django_manage:
+    command: collectstatic
+    app_path: "{{ django_app_path }}"
+    virtualenv: "{{ django_venv_path }}"
+    clear: "{{ django_static_clear | default(false) }}"
+  become_user: "{{ django_user }}"
+  register: collectstatic_result
+  when:
+    - django_collect_static | default(true)
+    - not ansible_check_mode
+  failed_when:
+    - collectstatic_result.failed is defined
+    - collectstatic_result.failed
+    - "'Unknown command' not in (collectstatic_result.msg | default(''))"
+  tags:
+    - database
+    - static
+
+- name: Display static collection results
+  debug:
+    msg: "{{ collectstatic_result.stdout | default('No stdout - see msg: ' + (collectstatic_result.msg | default('No message'))) }}"
+  when:
+    - collectstatic_result is defined
+    - django_verbose | default(false)
+  tags:
+    - database
+    - static
+
+- name: Django migration completed
+  debug:
+    msg:
+      - "Django migration process completed successfully!"
+      - "Django data backup: {{ 'Created' if django_dump_result is changed else 'Skipped' }}"
+      - "PostgreSQL backup: {{ 'Created' if postgres_backup_result is changed else 'Skipped/Failed' }}"
+      - "Migrations applied: {{ 'Yes' if migration_result is changed else 'No changes' }}"
+      - "Static files collected: {{ 'Yes' if collectstatic_result is changed else 'Skipped' }}"
+  tags:
+    - database
+    - migrations
