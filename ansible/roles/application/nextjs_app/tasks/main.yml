@@ -39,17 +39,6 @@
     - application
     - backup
 
-- name: Stop Next.js service
-  include_role:
-    name: common/service
-  vars:
-    service_name: "{{ app_service_name }}"
-    service_manager: "{{ app_service_manager }}"
-    service_action: "stop"
-    service_user: root
-  tags:
-    - application
-    - service
 
 - name: Ensure application directory structure
   file:
@@ -193,13 +182,13 @@
     - application
     - permissions
 
-- name: Start Next.js service
+- name: Restart Next.js service (zero-downtime deployment)
   include_role:
     name: common/service
   vars:
     service_name: "{{ app_service_name }}"
     service_manager: "{{ app_service_manager }}"
-    service_action: "start"
+    service_action: "restart"
     service_user: root
     service_port: "{{ app_service_port | default(3000) }}"
     service_health_url: "{{ app_health_url | default(omit) }}"

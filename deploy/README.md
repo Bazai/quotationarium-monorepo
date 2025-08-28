@@ -1,6 +1,6 @@
 # Deploy Module
 
-Централизованный модуль развертывания для проекта quotes application.
+Централизованный модуль развертывания для проекта quotes application. Первая версия, до ansible. Преднозначалось для запуска на VPS сервере, после пулла git репозитория в /opt/collector_monorepo
 
 ## Структура
 
@@ -40,7 +40,8 @@ deploy/
 ```
 
 ### Environments:
-- `production` - продакшн (по умолчанию)  
+
+- `production` - продакшн (по умолчанию)
 - `local` - локальное тестирование
 - `staging` - стейджинг
 
@@ -62,13 +63,13 @@ deploy/
 
 ## Конфигурация
 
-Все настройки централизованы в файлах `config/.env.*`. 
+Все настройки централизованы в файлах `config/.env.*`.
 
 См. подробности в [docs/configuration.md](docs/configuration.md).
 
 ## Архитектура путей
 
 - `PROJECT_ROOT` - корень всего проекта (../../../)
-- `DEPLOY_ROOT` - корень модуля deploy (./)  
+- `DEPLOY_ROOT` - корень модуля deploy (./)
 - `SCRIPT_DIR` - директория скриптов (./scripts)
 - `CONFIG_DIR` - директория конфигов (./config)

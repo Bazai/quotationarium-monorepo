@@ -3,10 +3,10 @@
   hosts: quotes-prod
   become: yes
   gather_facts: yes
-  
+
   vars:
     timestamp: "{{ ansible_date_time.epoch }}"
-  
+
   pre_tasks:
     - name: Display frontend deployment information
       debug:
@@ -16,7 +16,7 @@
           - "Version: {{ deploy_version | default('main') }}"
           - "Timestamp: {{ ansible_date_time.iso8601 }}"
           - "Frontend: {{ frontend_prod_path }}"
-  
+
   tasks:
     - name: Ensure deployment directories exist
       file:
@@ -24,7 +24,7 @@
         state: directory
         owner: root
         group: root
-        mode: '0755'
+        mode: "0755"
       loop:
         - "{{ monorepo_path }}"
         - "{{ backup_base_dir }}/frontend"
@@ -48,7 +48,7 @@
         fi
       become_user: root
       changed_when: false
-      
+
     - name: Clone or update repository
       git:
         repo: "{{ git_repo }}"
@@ -59,7 +59,7 @@
       become_user: root
       register: git_result
       tags: [always]
-      
+
     - name: Set proper ownership of cloned repository
       file:
         path: "{{ monorepo_path }}"
@@ -75,7 +75,7 @@
         msg: "Repository updated. Latest commit: {{ git_result.after[:8] }}"
       tags: [always]
 
-    # Deploy frontend only  
+    # Deploy frontend only
     - name: Deploy Next.js frontend
       include_role:
         name: application/nextjs_app
@@ -89,6 +89,7 @@
         app_api_url: "{{ backend_api_url }}"
         app_site_url: "{{ frontend_site_url }}"
         app_google_tag_id: "{{ google_tag_id | default('') }}"
+        app_health_url: "{{ frontend_health_url }}"
       tags: [frontend, always]
 
     # Frontend health check

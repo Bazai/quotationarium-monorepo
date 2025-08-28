@@ -19,7 +19,7 @@ all:
 
     # Services
     backend_service: "collector"
-    frontend_service: "collect_front"
+    frontend_service: "app" # Real PM2 process name
     service_user: "root"
 
     # Git config
@@ -34,5 +34,6 @@ all:
     # URLs (production-specific)
     frontend_site_url: "https://expo.timuroki.ink"
     frontend_health_url: "https://expo.timuroki.ink/"
+    google_tag_id: "GTM-5KMHZSHX"
     backend_api_url: "https://expo.timuroki.ink/api/"
     backend_health_url: "https://expo.timuroki.ink/api/quotes?position=1"

@@ -21,6 +21,7 @@ app_sync_files:
   - "package.json"
   - "next.config.js"
   - "public/"
+  - "node_modules/"
 
 # Paths - must be defined in playbook
 app_source_path: ""
