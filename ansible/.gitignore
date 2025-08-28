@@ -1,0 +1,19 @@
+# Ansible Vault password file
+.ansible-vault-password
+
+# Temporary files
+*.retry
+*.tmp
+
+# Local overrides
+*local.yml
+*local.yaml
+
+# IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Logs
+*.log
