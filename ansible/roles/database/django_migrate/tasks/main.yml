@@ -29,7 +29,7 @@
     command: check
     app_path: "{{ django_app_path }}"
     virtualenv: "{{ django_venv_path }}"
-  become_user: "{{ django_user }}"
+  become_user: root
   register: django_check
   tags:
     - database
@@ -47,7 +47,7 @@
     command: check
     app_path: "{{ django_app_path }}"
     virtualenv: "{{ django_venv_path }}"
-  become_user: "{{ django_user }}"
+  become_user: root
   register: db_test
   tags:
     - database
@@ -58,7 +58,7 @@
     command: showmigrations
     app_path: "{{ django_app_path }}"
     virtualenv: "{{ django_venv_path }}"
-  become_user: "{{ django_user }}"
+  become_user: root
   register: current_migrations
   tags:
     - database
@@ -75,7 +75,7 @@
 - name: Check for pending migrations
   shell: |
     {{ django_venv_path }}/bin/python {{ django_app_path }}/manage.py makemigrations --dry-run --check
-  become_user: "{{ django_user }}"
+  become_user: root
   register: pending_migrations
   failed_when: false
   changed_when: false
@@ -98,8 +98,8 @@
   file:
     path: "{{ django_backup_dir }}"
     state: directory
-    owner: "{{ django_user }}"
-    group: "{{ django_user }}"
+    owner: root
+    group: root
     mode: "0755"
   become: yes
   when:
@@ -113,7 +113,7 @@
   shell: |
     cd {{ django_app_path }}
     {{ django_venv_path }}/bin/python manage.py dumpdata --format=json
-  become_user: "{{ django_user }}"
+  become_user: root
   register: django_dump_result
   when:
     - django_backup_enabled | default(true)
@@ -127,8 +127,8 @@
   copy:
     content: "{{ django_dump_result.stdout | default('[]') }}"
     dest: "{{ django_backup_dir }}/django_data_{{ ansible_date_time.epoch }}.json"
-    owner: "{{ django_user }}"
-    group: "{{ django_user }}"
+    owner: root
+    group: root
     mode: "0644"
   become: yes
   when:
@@ -166,7 +166,7 @@
     command: migrate
     app_path: "{{ django_app_path }}"
     virtualenv: "{{ django_venv_path }}"
-  become_user: "{{ django_user }}"
+  become_user: root
   register: migration_result
   when: not ansible_check_mode
   failed_when:
@@ -192,7 +192,7 @@
     command: showmigrations
     app_path: "{{ django_app_path }}"
     virtualenv: "{{ django_venv_path }}"
-  become_user: "{{ django_user }}"
+  become_user: root
   register: final_migrations
   tags:
     - database
@@ -214,7 +214,7 @@
     app_path: "{{ django_app_path }}"
     virtualenv: "{{ django_venv_path }}"
     clear: "{{ django_static_clear | default(false) }}"
-  become_user: "{{ django_user }}"
+  become_user: root
   register: collectstatic_result
   when:
     - django_collect_static | default(true)

@@ -82,7 +82,6 @@
       vars:
         app_source_path: "{{ monorepo_path }}/frontend"
         app_prod_path: "{{ frontend_prod_path }}"
-        app_user: "www-data"
         app_service_name: "{{ frontend_service }}"
         app_backup_dir: "{{ backup_base_dir }}/frontend"
         app_service_manager: "pm2"

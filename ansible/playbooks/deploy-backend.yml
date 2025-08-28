@@ -83,7 +83,6 @@
         app_source_path: "{{ monorepo_path }}/backend"
         app_prod_path: "{{ backend_prod_path }}"
         app_venv_path: "{{ backend_venv_path }}"
-        app_user: "www-data"
         app_service_name: "{{ backend_service }}"
         app_backup_dir: "{{ backup_base_dir }}/backend"
         app_service_manager: "systemd"

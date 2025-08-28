@@ -2,14 +2,14 @@
 
 # Project configuration
 project_name: "quotes"
-project_user: "www-data"
+project_user: "root"
 service_user: "{{ project_user }}"
 
 # Repository configuration
 git_repo: "https://github.com/Bazai/quotationarium-monorepo"
 git_branch: "main"
 monorepo_path: "/opt/collector_monorepo"
-git_deploy_key: "~/.ssh/id_rsa_collector_monorepo"  # Deploy key on server for git access
+git_deploy_key: "~/.ssh/id_rsa_collector_monorepo" # Deploy key on server for git access
 
 # Base paths
 backup_base_dir: "/opt/collector_backups"

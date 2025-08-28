@@ -1,7 +1,6 @@
 ---
 # Django migration role defaults
 django_settings_module: "config.settings_local"
-django_user: "www-data"
 django_backup_enabled: true
 django_collect_static: true
 django_static_clear: false

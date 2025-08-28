@@ -4,33 +4,33 @@ all:
       ansible_host: "164.90.214.150"
       ansible_user: root
       ansible_python_interpreter: /usr/bin/python3
-      ansible_ssh_private_key_file: ~/.ssh/id_rsa  # Your SSH key for connecting to server
+      ansible_ssh_private_key_file: ~/.ssh/id_rsa # Your SSH key for connecting to server
 
   vars:
     # Production-specific overrides (if needed)
     # Most variables are in group_vars/all/main.yml
-    
+
     # Paths (temporary - should be in group_vars)
     frontend_prod_path: "/opt/collect_front"
     backend_prod_path: "/opt/collector"
     backend_venv_path: "/opt/collector/.venv"
     monorepo_path: "/opt/collector_monorepo"
     backup_base_dir: "/opt/collector_backups"
-    
+
     # Services
     backend_service: "collector"
     frontend_service: "collect_front"
-    service_user: "www-data"
-    
+    service_user: "root"
+
     # Git config
     git_repo: "https://github.com/Bazai/quotationarium-monorepo"
     git_branch: "main"
     git_deploy_key: "~/.ssh/id_rsa_collector_monorepo"
-    
+
     # Ports
     frontend_port: 3000
     # backend_port: 8000  # Removed - gunicorn uses Unix socket
-    
+
     # URLs (production-specific)
     frontend_site_url: "https://expo.timuroki.ink"
     frontend_health_url: "https://expo.timuroki.ink/"

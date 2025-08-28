@@ -1,7 +1,6 @@
 ---
 # Django application defaults
 app_name: "django_app"
-app_user: "www-data"
 app_backup_enabled: true
 app_sync_delete: true
 app_run_migrations: true
@@ -18,7 +17,7 @@ app_rsync_excludes:
   - "**/.git"
   - "**/logs"
   - "**/*.log"
-  - "**/config/settings_local.py"  # Preserve production config
+  - "**/config/settings_local.py" # Preserve production config
 
 # Paths - must be defined in playbook
 app_source_path: ""

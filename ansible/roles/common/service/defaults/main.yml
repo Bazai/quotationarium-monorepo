@@ -4,7 +4,7 @@ service_enabled: true
 service_start_delay: 2
 service_timeout: 30
 service_host: localhost
-service_user: www-data
+service_user: root
 
 # Valid actions: start, stop, restart
 service_action: restart

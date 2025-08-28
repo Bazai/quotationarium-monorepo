@@ -14,7 +14,6 @@
       - app_source_path
       - app_prod_path
       - app_venv_path
-      - app_user
     validate_source_paths:
       - "{{ app_source_path }}"
     validate_required_files:
@@ -56,8 +55,8 @@
   file:
     path: "{{ item }}"
     state: directory
-    owner: "{{ app_user }}"
-    group: "{{ app_user }}"
+    owner: root
+    group: root
     mode: "0755"
   loop:
     - "{{ app_prod_path }}"
@@ -90,8 +89,8 @@
 - name: Set proper ownership after sync
   file:
     path: "{{ app_prod_path }}"
-    owner: "{{ app_user }}"
-    group: "{{ app_user }}"
+    owner: root
+    group: root
     recurse: yes
   become: yes
   when: sync_result is changed
@@ -109,13 +108,13 @@
     - name: Create virtual environment
       shell: python3 -m venv {{ app_venv_path }}
       when: not venv_exists.stat.exists
-      become_user: "{{ app_user }}"
+      become_user: root
 
     - name: Set virtual environment ownership
       file:
         path: "{{ app_venv_path }}"
-        owner: "{{ app_user }}"
-        group: "{{ app_user }}"
+        owner: root
+        group: root
         recurse: yes
       become: yes
   tags:
@@ -127,7 +126,7 @@
     requirements: "{{ app_prod_path }}/requirements.txt"
     virtualenv: "{{ app_venv_path }}"
     state: present
-  become_user: "{{ app_user }}"
+  become_user: root
   register: pip_result
   retries: 3
   delay: 5
@@ -148,7 +147,7 @@
   vars:
     django_app_path: "{{ app_prod_path }}"
     django_venv_path: "{{ app_venv_path }}"
-    django_user: "{{ app_user }}"
+    # Django operations run as root for consistency
     django_settings_module: "{{ app_django_settings }}"
     django_backup_dir: "{{ app_backup_dir }}/database"
     # PostgreSQL backup disabled - using Django dumpdata instead

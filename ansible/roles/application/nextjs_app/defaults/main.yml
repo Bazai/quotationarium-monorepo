@@ -1,7 +1,6 @@
 ---
 # Next.js application defaults
 app_name: "nextjs_app"
-app_user: "www-data"
 app_backup_enabled: true
 app_service_manager: "pm2"
 app_service_port: 3000
@@ -20,7 +19,7 @@ app_google_tag_id: ""
 # Files to synchronize to production
 app_sync_files:
   - "package.json"
-  - "next.config.js" 
+  - "next.config.js"
   - "public/"
 
 # Paths - must be defined in playbook

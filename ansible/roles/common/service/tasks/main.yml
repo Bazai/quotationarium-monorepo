@@ -13,7 +13,7 @@
 - name: Display service status
   debug:
     msg: "Service {{ service_name }} is {{ service_status.status.ActiveState | default('unknown') }}"
-  when: 
+  when:
     - service_manager == "systemd"
     - service_status is defined
   tags:
@@ -54,7 +54,7 @@
   register: pm2_status
   failed_when: false
   changed_when: false
-  become_user: "{{ service_user | default('www-data') }}"
+  become_user: "{{ service_user | default('root') }}"
   when: service_manager == "pm2"
   tags:
     - service
@@ -65,7 +65,7 @@
     source ~/.bashrc 2>/dev/null || true
     source ~/.profile 2>/dev/null || true
     pm2 stop {{ service_name }}
-  become_user: "{{ service_user | default('www-data') }}"
+  become_user: "{{ service_user | default('root') }}"
   when:
     - service_action in ["stop", "restart"]
     - service_manager == "pm2"
@@ -79,7 +79,7 @@
     source ~/.bashrc 2>/dev/null || true
     source ~/.profile 2>/dev/null || true
     pm2 start {{ service_name }}
-  become_user: "{{ service_user | default('www-data') }}"
+  become_user: "{{ service_user | default('root') }}"
   when:
     - service_action in ["start", "restart"]
     - service_manager == "pm2"
@@ -94,7 +94,7 @@
     source ~/.bashrc 2>/dev/null || true
     source ~/.profile 2>/dev/null || true
     pm2 restart {{ service_name }}
-  become_user: "{{ service_user | default('www-data') }}"
+  become_user: "{{ service_user | default('root') }}"
   when:
     - service_action in ["start", "restart"]
     - service_manager == "pm2"
@@ -108,7 +108,7 @@
     source ~/.bashrc 2>/dev/null || true
     source ~/.profile 2>/dev/null || true
     pm2 save
-  become_user: "{{ service_user | default('www-data') }}"
+  become_user: "{{ service_user | default('root') }}"
   when:
     - service_manager == "pm2"
     - (pm2_started is changed) or (pm2_restarted is changed)

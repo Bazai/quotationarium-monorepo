@@ -13,7 +13,6 @@
     required_variables:
       - app_source_path
       - app_prod_path
-      - app_user
     validate_source_paths:
       - "{{ app_source_path }}"
     validate_required_files:
@@ -47,7 +46,7 @@
     service_name: "{{ app_service_name }}"
     service_manager: "{{ app_service_manager }}"
     service_action: "stop"
-    service_user: "{{ app_user }}"
+    service_user: root
   tags:
     - application
     - service
@@ -56,8 +55,8 @@
   file:
     path: "{{ item }}"
     state: directory
-    owner: "{{ app_user }}"
-    group: "{{ app_user }}"
+    owner: root
+    group: root
     mode: '0755'
   loop:
     - "{{ app_prod_path }}"
@@ -69,12 +68,13 @@
 
 - name: Install Node.js dependencies
   shell: |
-    source ~/.bashrc 2>/dev/null || true
-    source ~/.profile 2>/dev/null || true
+    # Use same Node.js/npm as PM2 configuration
+    export PATH="/root/.nvm/versions/node/v20.13.1/bin:$PATH"
     export NODE_OPTIONS="--max-old-space-size={{ app_node_memory | default(512) }}"
     npm ci {% if not app_npm_no_optional | default(false) %}{% else %}--no-optional{% endif %}
   args:
     chdir: "{{ app_source_path }}"
+  become_user: root
   register: npm_install
   async: "{{ app_npm_timeout | default(300) }}"
   poll: 5
@@ -107,8 +107,8 @@
 
 - name: Build Next.js application
   shell: |
-    source ~/.bashrc 2>/dev/null || true
-    source ~/.profile 2>/dev/null || true
+    # Use same Node.js/npm as PM2 configuration
+    export PATH="/root/.nvm/versions/node/v20.13.1/bin:$PATH"
     export NODE_OPTIONS="--max-old-space-size={{ app_node_memory | default(512) }}"
     export NEXT_PUBLIC_API_URL="{{ app_api_url }}"
     export NEXT_PUBLIC_SITE_URL="{{ app_site_url }}"
@@ -117,6 +117,7 @@
     npm run build
   args:
     chdir: "{{ app_source_path }}"
+  become_user: root
   register: build_result
   async: "{{ app_build_timeout | default(600) }}"
   poll: 10
@@ -181,8 +182,8 @@
 - name: Set proper ownership of production files
   file:
     path: "{{ app_prod_path }}"
-    owner: "{{ app_user }}"
-    group: "{{ app_user }}"
+    owner: root
+    group: root
     recurse: yes
   become: yes
   when: 
@@ -199,7 +200,7 @@
     service_name: "{{ app_service_name }}"
     service_manager: "{{ app_service_manager }}"
     service_action: "start"
-    service_user: "{{ app_user }}"
+    service_user: root
     service_port: "{{ app_service_port | default(3000) }}"
     service_health_url: "{{ app_health_url | default(omit) }}"
   tags:
