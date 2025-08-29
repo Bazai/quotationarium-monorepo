@@ -19,7 +19,7 @@
         <div class="left-column">
             <!-- Статистика по приёмам -->
             <div class="module">
-                <h3>Приёмы</h3>
+                <h3>Приёмы: {{ type_stats|length }}</h3>
                 <div class="results">
                     <table class="module-table">
                         <thead>
@@ -49,7 +49,7 @@
             
             <!-- Статистика по темам -->
             <div class="module">
-                <h3>Темы</h3>
+                <h3>Темы: {{ topic_stats|length }}</h3>
                 <div class="results">
                     <table class="module-table">
                         <thead>
@@ -82,11 +82,12 @@
         <div class="right-column">
             <!-- Статистика по авторам -->
             <div class="module">
-                <h3>Авторы</h3>
+                <h3>Авторы: {{ author_stats|length }}</h3>
                 <div class="results">
                     <table class="module-table">
                         <thead>
                             <tr>
+                                <th></th>
                                 <th>Автор</th>
                                 <th>Количество цитат</th>
                             </tr>
@@ -94,6 +95,7 @@
                         <tbody>
                             {% for author in author_stats %}
                             <tr class="{% cycle 'row1' 'row2' %}">
+                                <td>{{ forloop.counter }}</td>
                                 <td><strong>{{ author.full_name }}</strong></td>
                                 <td>{{ author.quote_count }}</td>
                             </tr>

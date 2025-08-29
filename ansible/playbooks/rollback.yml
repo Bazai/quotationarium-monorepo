@@ -141,7 +141,7 @@
 
     - name: Replace frontend files
       ansible.posix.synchronize:
-        src: "{{ temp_restore_dir.path }}/{{ frontend_prod_path }}"
+        src: "{{ temp_restore_dir.path }}/"
         dest: "{{ frontend_prod_path }}/"
         delete: yes
         rsync_opts:
