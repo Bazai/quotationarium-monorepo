@@ -1,8 +1,21 @@
 # Ansible Deployment для Quotes Monorepo
 
+## TODOs
+
+Я проверил ТОЛЬКО деплой backend and frontend.
+
+- [ ] Реализовать и проверить rollback. Не работает rollback, т.к. tag.gz архивы в /opt/collector_backups/{backend,frontend,database} содержат название source папки (eg. /collect_front/{contents}).
+  - На DO Droplet мало места. А разархивирование только frontend архива занимает 660Мб
+- [ ] Проверить, что попадает в бэкап архивы backend
+- [ ] Реализовать rollback backend
+- [ ] Проверить backend rollback с восстановлением db
+- [ ] Сделать и перепроверить npm install & npm build только с `npm list --production`
+- [ ] Реализовать темплейты для: confg/settings_local.py, /etc/systemd/\*, /etc/nginx/sites-enabled/collector (Ищи в Obsidian)
+
 ## 🚀 Быстрый старт (Frontend deployment)
 
 ### 1. Подготовка
+
 ```bash
 cd ansible
 
@@ -19,16 +32,19 @@ chmod 600 .ansible-vault-password
 ```
 
 ### 2. Проверка готовности
+
 ```bash
 ./scripts/pre-deploy-check.sh frontend
 ```
 
 ### 3. Первый деплой
+
 ```bash
 ./scripts/deploy-frontend.sh
 ```
 
 ### 4. Откат (если нужен)
+
 ```bash
 ./scripts/rollback.sh frontend TIMESTAMP
 ```

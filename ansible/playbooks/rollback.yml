@@ -3,11 +3,11 @@
   hosts: quotes-prod
   become: yes
   gather_facts: yes
-  
+
   vars:
     rollback_timestamp: "{{ rollback_timestamp | default('latest') }}"
     rollback_component: "{{ rollback_component | default('all') }}"
-  
+
   pre_tasks:
     - name: Display rollback information
       debug:
@@ -16,7 +16,7 @@
           - "Target: {{ inventory_hostname }}"
           - "Component: {{ rollback_component }}"
           - "Timestamp: {{ rollback_timestamp }}"
-    
+
     - name: Validate rollback parameters
       assert:
         that:
@@ -31,17 +31,207 @@
         recurse: yes
       register: available_backups
 
-    - name: Stop services before rollback
+    - name: Find latest backend backup (if timestamp is 'latest')
+      find:
+        paths: "{{ backup_base_dir }}/backend/"
+        patterns: "django_app_*.tar.gz"
+        age_stamp: mtime
+        use_regex: no
+      register: backend_backups
+      when: rollback_timestamp == 'latest' and rollback_component in ['all', 'backend']
+
+    - name: Find latest frontend backup (if timestamp is 'latest')
+      find:
+        paths: "{{ backup_base_dir }}/frontend/"
+        patterns: "nextjs_build_*.tar.gz"
+        age_stamp: mtime
+        use_regex: no
+      register: frontend_backups
+      when: rollback_timestamp == 'latest' and rollback_component in ['all', 'frontend']
+
+    - name: Set actual rollback timestamp from latest backups
+      set_fact:
+        actual_rollback_timestamp: "{{ rollback_timestamp }}"
+      when: rollback_timestamp != 'latest'
+
+    - name: Extract timestamp from latest backend backup
+      set_fact:
+        backend_latest_timestamp: "{{ (backend_backups.files | sort(attribute='mtime') | last).path | regex_replace('^.*/django_app_(.*)\\.tar\\.gz$', '\\1') }}"
+      when: rollback_timestamp == 'latest' and rollback_component in ['all', 'backend'] and backend_backups.files | length > 0
+
+    - name: Extract timestamp from latest frontend backup
+      set_fact:
+        frontend_latest_timestamp: "{{ (frontend_backups.files | sort(attribute='mtime') | last).path | regex_replace('^.*/nextjs_build_(.*)\\.tar\\.gz$', '\\1') }}"
+      when: rollback_timestamp == 'latest' and rollback_component in ['all', 'frontend'] and frontend_backups.files | length > 0
+
+    - name: Set unified latest timestamp for 'all' component
+      set_fact:
+        actual_rollback_timestamp: "{{ backend_latest_timestamp | default(frontend_latest_timestamp) }}"
+      when: rollback_timestamp == 'latest' and rollback_component == 'all'
+
+    - name: Set backend-specific latest timestamp
+      set_fact:
+        actual_rollback_timestamp: "{{ backend_latest_timestamp }}"
+      when: rollback_timestamp == 'latest' and rollback_component == 'backend'
+
+    - name: Set frontend-specific latest timestamp
+      set_fact:
+        actual_rollback_timestamp: "{{ frontend_latest_timestamp }}"
+      when: rollback_timestamp == 'latest' and rollback_component == 'frontend'
+
+    - name: Validate specific backup files exist
+      stat:
+        path: "{{ item }}"
+      register: backup_validation
+      loop:
+        - "{{ backup_base_dir }}/backend/django_app_{{ actual_rollback_timestamp }}.tar.gz"
+        - "{{ backup_base_dir }}/frontend/nextjs_build_{{ actual_rollback_timestamp }}.tar.gz"
+      when:
+        - (rollback_component == 'all') or
+          (rollback_component == 'backend' and 'django_app' in item) or
+          (rollback_component == 'frontend' and 'nextjs_build' in item)
+      failed_when:
+        - backup_validation.stat is defined
+        - not backup_validation.stat.exists
+
+    - name: Create temporary restoration directory
+      tempfile:
+        state: directory
+        suffix: _rollback
+      register: temp_restore_dir
+
+    - name: Restore backend from backup
+      unarchive:
+        src: "{{ backup_base_dir }}/backend/django_app_{{ actual_rollback_timestamp }}.tar.gz"
+        dest: "{{ temp_restore_dir.path }}"
+        remote_src: yes
+      when: rollback_component in ['all', 'backend']
+      register: backend_extracted
+
+    - name: Restore frontend from backup
+      unarchive:
+        src: "{{ backup_base_dir }}/frontend/nextjs_build_{{ actual_rollback_timestamp }}.tar.gz"
+        dest: "{{ temp_restore_dir.path }}"
+        remote_src: yes
+      when: rollback_component in ['all', 'frontend']
+      register: frontend_extracted
+
+    - name: Backup current state before rollback
+      archive:
+        path: "{{ item.current_path }}"
+        dest: "{{ backup_base_dir }}/{{ item.component }}/current_before_rollback_{{ ansible_date_time.epoch }}.tar.gz"
+        format: gz
+      loop:
+        - { current_path: "{{ backend_prod_path }}", component: "backend" }
+        - { current_path: "{{ frontend_prod_path }}", component: "frontend" }
+      when: rollback_component in ['all', item.component]
+
+    - name: Replace backend files
+      ansible.posix.synchronize:
+        src: "{{ temp_restore_dir.path }}/"
+        dest: "{{ backend_prod_path }}"
+        delete: yes
+        rsync_opts:
+          - "--exclude=*.log"
+          - "--exclude=__pycache__"
+      delegate_to: "{{ inventory_hostname }}"
+      when:
+        - rollback_component in ['all', 'backend']
+        - backend_extracted is succeeded
+
+    - name: Replace frontend files
+      ansible.posix.synchronize:
+        src: "{{ temp_restore_dir.path }}/{{ frontend_prod_path }}"
+        dest: "{{ frontend_prod_path }}/"
+        delete: yes
+        rsync_opts:
+          - "--exclude=*.log"
+          - "--exclude=node_modules/.cache"
+      delegate_to: "{{ inventory_hostname }}"
+      when:
+        - rollback_component in ['all', 'frontend']
+        - frontend_extracted is succeeded
+
+    - name: Set proper ownership after restoration
+      file:
+        path: "{{ item.path }}"
+        owner: root
+        group: root
+        recurse: yes
+      loop:
+        - { path: "{{ backend_prod_path }}", component: "backend" }
+        - { path: "{{ frontend_prod_path }}", component: "frontend" }
+      when: rollback_component in ['all', item.component]
+      become: yes
+
+    - name: Restore database from backup
+      shell: |
+        export PATH="/root/.venv/bin:$PATH"
+        cd {{ backend_prod_path }}
+        {{ backend_venv_path }}/bin/python manage.py loaddata {{ backup_base_dir }}/database/django_data_{{ actual_rollback_timestamp }}.json
+      become_user: root
+      when: rollback_component in ['all', 'backend']
+      register: database_restored
+      failed_when: false
+
+    - name: Validate frontend structure after rollback
+      stat:
+        path: "{{ item }}"
+      register: frontend_validation
+      loop:
+        - "{{ frontend_prod_path }}/.next"
+        - "{{ frontend_prod_path }}/package.json"
+        - "{{ frontend_prod_path }}/node_modules"
+      when: rollback_component in ['all', 'frontend']
+      failed_when:
+        - rollback_component in ['all', 'frontend']
+        - not frontend_validation.stat.exists
+
+    - name: Check Node.js dependencies integrity (frontend)
+      shell: |
+        export PATH="/root/.nvm/versions/node/v20.13.1/bin:$PATH"
+        cd {{ frontend_prod_path }}
+        npm list --production --silent
+      become_user: root
+      register: npm_check
+      failed_when: false
+      when: rollback_component in ['all', 'frontend']
+
+    - name: Reinstall Node.js dependencies if corrupted
+      shell: |
+        export PATH="/root/.nvm/versions/node/v20.13.1/bin:$PATH"
+        cd {{ frontend_prod_path }}
+        npm ci --production
+      become_user: root
+      when:
+        - rollback_component in ['all', 'frontend']
+        - npm_check.rc != 0
+      register: npm_reinstall
+
+    - name: Clean up temporary directory
+      file:
+        path: "{{ temp_restore_dir.path }}"
+        state: absent
+
+    - name: Stop services for file replacement
       include_role:
         name: common/service
       vars:
         service_name: "{{ item.service }}"
         service_manager: "{{ item.manager }}"
         service_action: "stop"
-        service_user: "{{ service_user }}"
+        service_user: root
       loop:
-        - { service: "{{ backend_service }}", manager: "systemd", component: "backend" }
-        - { service: "{{ frontend_service }}", manager: "pm2", component: "frontend" }
+        - {
+            service: "{{ backend_service }}",
+            manager: "systemd",
+            component: "backend",
+          }
+        - {
+            service: "{{ frontend_service }}",
+            manager: "pm2",
+            component: "frontend",
+          }
       when: rollback_component in ['all', item.component]
 
     - name: Start services after rollback
@@ -51,12 +241,23 @@
         service_name: "{{ item.service }}"
         service_manager: "{{ item.manager }}"
         service_action: "start"
-        service_user: "{{ service_user }}"
+        service_user: root
         service_port: "{{ item.port | default(omit) }}"
         service_health_url: "{{ item.health_url | default(omit) }}"
       loop:
-        - { service: "{{ backend_service }}", manager: "systemd", component: "backend", health_url: "{{ backend_health_url }}" }
-        - { service: "{{ frontend_service }}", manager: "pm2", component: "frontend", port: "{{ frontend_port }}", health_url: "{{ frontend_health_url }}" }
+        - {
+            service: "{{ backend_service }}",
+            manager: "systemd",
+            component: "backend",
+            health_url: "{{ backend_health_url }}",
+          }
+        - {
+            service: "{{ frontend_service }}",
+            manager: "pm2",
+            component: "frontend",
+            port: "{{ frontend_port }}",
+            health_url: "{{ frontend_health_url }}",
+          }
       when: rollback_component in ['all', item.component]
 
   post_tasks:
@@ -65,4 +266,30 @@
         msg:
           - "=== Rollback Completed ==="
           - "Component: {{ rollback_component }}"
-          - "Timestamp: {{ rollback_timestamp }}"
+          - "Requested timestamp: {{ rollback_timestamp }}"
+          - "Actual timestamp used: {{ actual_rollback_timestamp }}"
+          - "Backend restored: {{ 'Yes' if (rollback_component in ['all', 'backend'] and backend_extracted is succeeded) else 'No' }}"
+          - "Frontend restored: {{ 'Yes' if (rollback_component in ['all', 'frontend'] and frontend_extracted is succeeded) else 'No' }}"
+          - "Database restored: {{ 'Yes' if (rollback_component in ['all', 'backend'] and database_restored.rc == 0) else 'No' }}"
+          - "Node.js dependencies: {{ 'Reinstalled' if npm_reinstall is changed else 'OK' if npm_check is defined and npm_check.rc == 0 else 'Skipped' }}"
+          - "Frontend validation: {{ 'Passed' if frontend_validation is succeeded else 'Skipped' }}"
+
+    - name: Display rollback warnings (if any)
+      debug:
+        msg:
+          - "⚠️  WARNINGS:"
+          - "{{ '- Database restore failed' if (database_restored is defined and database_restored.rc != 0) else '' }}"
+          - "{{ '- Node.js dependencies had issues' if (npm_check is defined and npm_check.rc != 0 and npm_reinstall is not changed) else '' }}"
+      when:
+        - (database_restored is defined and database_restored.rc != 0) or
+          (npm_check is defined and npm_check.rc != 0 and npm_reinstall is not changed)
+
+    - name: Display next steps
+      debug:
+        msg:
+          - "=== Post-Rollback Checklist ==="
+          - "1. Verify services are running: systemctl status {{ backend_service }} (backend), pm2 status (frontend)"
+          - "2. Check application logs: journalctl -u {{ backend_service }} -f (backend), pm2 logs app (frontend)"
+          - "3. Test application functionality in browser"
+          - "4. Monitor for any issues in the next 10-15 minutes"
+          - "5. If rollback failed, check /opt/collector_backups/ for current_before_rollback_*.tar.gz emergency backups"
